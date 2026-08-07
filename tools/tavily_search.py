@@ -5,28 +5,7 @@ from langchain.tools import ToolRuntime, tool
 
 from config import TAVILY_API_KEY
 
-TAVILY_TOOL_DESCRIPTION = """
-Search the web using the Tavily Search API.
 
-Use this tool for:
-
-- weather
-- live information
-- general web search
-- internet facts
-- company information
-- fact verification
-- current web content
-
-Returns:
-- title
-- summary
-- URL
-- relevance score
-
-Do not use this tool for breaking news or deep research.
-
-"""
 
 
 def format_tavily_results(data: dict) -> str:
@@ -53,12 +32,14 @@ Score: {score_text}
 URL: {url}
 """.strip()
     
-
         formatted_results.append(formatted_result)
 
     return "\n\n".join(formatted_results)
 
-@tool(description=TAVILY_TOOL_DESCRIPTION)
+with open("descriptions.json", "r", encoding="utf-8") as f:
+    descriptions = json.load(f)
+
+@tool(description=descriptions["tavily_tool"])
 def tavily_web_search(
     query: str,
     runtime: ToolRuntime,

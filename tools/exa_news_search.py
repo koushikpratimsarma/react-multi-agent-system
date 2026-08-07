@@ -5,22 +5,6 @@ from langchain.tools import ToolRuntime, tool
 from config import EXA_API_KEY
 
 
-EXA_NEWS_TOOL_DESCRIPTION = """
-Search recent news using the Exa Search API.
-
-Use this tool for:
-- latest news
-- breaking news
-- recent events
-- company announcements
-- financial news
-- technology news
-- political developments
-
-The tool returns article titles, publication dates, authors,
-relevant highlights, extracted text, and source URLs.
-"""
-
 def format_exa_results(data: dict) -> str:
     results = data.get("results", [])
 
@@ -67,7 +51,10 @@ URL: {url}
     return "\n\n".join(formatted_results)
 
 
-@tool(description=EXA_NEWS_TOOL_DESCRIPTION)
+with open("descriptions.json", "r", encoding="utf-8") as f:
+    descriptions = json.load(f)
+
+@tool(description=descriptions["exa_news_tool"])
 def exa_news_search(
     query: str,
     runtime: ToolRuntime,

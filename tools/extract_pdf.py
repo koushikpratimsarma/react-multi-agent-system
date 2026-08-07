@@ -1,24 +1,13 @@
 import requests
 import pymupdf
+import json
 from langchain.tools import ToolRuntime, tool
 
 
+with open("descriptions.json", "r", encoding="utf-8") as f:
+    descriptions = json.load(f)
 
-
-PDF_READER_TOOL_DESCRIPTION = """
-Download a PDF document from a URL and extract its readable text.
-
-Use this tool for:
-- ArXiv papers
-- research papers
-- PDF reports
-- official PDF documents
-- technical whitepapers
-
-Use this tool only for PDF URLs.
-"""
-
-@tool(description=PDF_READER_TOOL_DESCRIPTION)
+@tool(description=descriptions["pdf_reader_tool"])
 def extract_pdf_text(
     url: str,
     runtime: ToolRuntime,

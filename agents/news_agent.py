@@ -1,3 +1,5 @@
+import json
+
 from langchain.agents import create_agent
 from langchain.tools import tool
 
@@ -12,22 +14,10 @@ news_agent = create_agent(
     name="news_agent",
 )
 
-
-NEWS_AGENT_DESCRIPTION = """
-Delegate the user's request to the News Agent when the question asks about
-latest news, recent events, breaking developments, company announcements,
-political developments, technology news, financial news, or events from a
-specific recent time period.
-
-The News Agent uses Exa to search recent articles, compare publication dates
-and event dates, remove duplicate reports, verify information across reliable
-sources, and produce a clear news summary.
-
-Do not use this tool for stable general knowledge, simple weather questions,
-or deep academic research involving research papers and literature reviews.
-"""
-
-@tool(description=NEWS_AGENT_DESCRIPTION)
+with open("descriptions.json", "r", encoding="utf-8") as f:
+    descriptions = json.load(f)
+    
+@tool(description=descriptions["news_agent_tool"])
 def ask_news_agent(messages):
     final_answer = ""
 

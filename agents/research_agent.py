@@ -1,3 +1,5 @@
+import json
+
 from langchain.agents import create_agent
 from langchain.tools import tool
 
@@ -16,14 +18,12 @@ research_agent = create_agent(
 )
 
 
-RESEARCH_AGENT_DESCRIPTION= """
-Delegate the user's request to the Research Agent for in-depth analysis,
-technical explanations, research papers, literature reviews, comparisons,
-multi-source reasoning, or complex topics that require detailed investigation.
-Do not use this tool for simple factual or real-time web queries.
-"""
 
-@tool(description=RESEARCH_AGENT_DESCRIPTION)
+
+with open("descriptions.json", "r", encoding="utf-8") as f:
+    descriptions = json.load(f)
+    
+@tool(description=descriptions["research_agent_tool"])
 def ask_research_agent(messages):
     final_answer = ""
 

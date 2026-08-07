@@ -1,3 +1,5 @@
+import json
+
 from langchain.agents import create_agent
 from langchain.tools import tool
 
@@ -13,15 +15,10 @@ web_agent = create_agent(
 )
 
 
-WEB_AGENT_DESCRIPTION = """
-Delegate the user's request to the Web Agent when the answer requires searching
-the internet. Suitable for current events, breaking news, weather, stock prices,
-recent technologies, company updates, live information, and other information
-that may have changed after the model's knowledge cutoff.
-Do not use this tool for general knowledge or conceptual questions that can be
-answered directly by the language model."""
+with open("descriptions.json", "r", encoding="utf-8") as f:
+    descriptions = json.load(f)
 
-@tool(description=WEB_AGENT_DESCRIPTION)
+@tool(description=descriptions["web_agent_tool"])
 def ask_web_agent(messages):
     final_answer = ""
 

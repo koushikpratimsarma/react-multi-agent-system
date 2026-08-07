@@ -1,28 +1,16 @@
 import requests
+import json
 
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 
 from langchain.tools import ToolRuntime, tool
 
-HTML_CRAWLER_TOOL_DESCRIPTION = """
-Open an HTML webpage and extract its readable text.
 
-Use this tool after a search tool returns a useful webpage URL.
+with open("descriptions.json", "r", encoding="utf-8") as f:
+    descriptions = json.load(f)
 
-Use it for:
-- official documentation
-- technical articles
-- blogs
-- research webpages
-- company reports published as HTML
-- other public HTML pages
-
-Do not use this tool for PDF URLs.
-Use the PDF reader tool for PDF documents.
-"""
-
-@tool(description=HTML_CRAWLER_TOOL_DESCRIPTION)
+@tool(description=descriptions["html_crawler_tool"])
 def crawl_html_page(
     url: str,
     runtime: ToolRuntime,
