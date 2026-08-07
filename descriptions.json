@@ -1,0 +1,15 @@
+{
+  "tavily_tool": "Search the web using the Tavily Search API.\n\nUse this tool for:\n- weather\n- live information\n- general web search\n- internet facts\n- company information\n- fact verification\n- current web content\n\nReturns:\n- title\n- summary\n- URL\n- relevance score\n\nDo not use this tool for breaking news or deep research.",
+
+  "exa_news_tool": "Search recent news using the Exa Search API.\n\nUse this tool for:\n- latest news\n- breaking news\n- recent events\n- company announcements\n- financial news\n- technology news\n- political developments\n\nThe tool returns article titles, publication dates, authors, relevant highlights, extracted text, and source URLs.",
+
+  "pdf_reader_tool": "Download a PDF document from a URL and extract its readable text.\n\nUse this tool for:\n- ArXiv papers\n- research papers\n- PDF reports\n- official PDF documents\n- technical whitepapers\n\nUse this tool only for PDF URLs.",
+
+  "html_crawler_tool": "Open an HTML webpage and extract its readable text.\n\nUse this tool after a search tool returns a useful webpage URL.\n\nUse it for:\n- official documentation\n- technical articles\n- blogs\n- research webpages\n- company reports published as HTML\n- other public HTML pages\n\nDo not use this tool for PDF URLs.\nUse the PDF reader tool for PDF documents.",
+
+  "news_agent_tool": "Delegate the user's request to the News Agent when the question asks about latest news, recent events, breaking developments, company announcements, political developments, technology news, financial news, or events from a specific recent time period.\n\nThe News Agent uses Exa to search recent articles, compare publication dates and event dates, remove duplicate reports, verify information across reliable sources, and produce a clear news summary.\n\nDo not use this tool for stable general knowledge, simple weather questions, or deep academic research involving research papers and literature reviews.",
+
+  "research_agent_tool": "Delegate the user's request to the Research Agent for in-depth analysis, technical explanations, research papers, literature reviews, comparisons, multi-source reasoning, or complex topics that require detailed investigation.\n\nDo not use this tool for simple factual or real-time web queries.",
+
+  "web_agent_tool": "Delegate the user's request to the Web Agent when the answer requires searching the internet. Suitable for current events, breaking news, weather, stock prices, recent technologies, company updates, live information, and other information that may have changed after the model's knowledge cutoff.\n\nDo not use this tool for general knowledge or conceptual questions that can be answered directly by the language model."
+}
