@@ -8,7 +8,7 @@ from prompts import RESEARCH_AGENT_PROMPT
 
 from tools.tavily_search import tavily_web_search
 from tools.crawl_html import crawl_html_page
-from tools.extract_pdf import extract_pdf_text
+from tools.pdf_url_reader import extract_pdf_text
 
 research_agent = create_agent(
     model=model,
