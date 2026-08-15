@@ -11,5 +11,7 @@
 
   "research_agent_tool": "Delegate the user's request to the Research Agent for in-depth analysis, technical explanations, research papers, literature reviews, comparisons, multi-source reasoning, or complex topics that require detailed investigation.\n\nDo not use this tool for simple factual or real-time web queries.",
 
-  "web_agent_tool": "Delegate the user's request to the Web Agent when the answer requires searching the internet. Suitable for current events, breaking news, weather, stock prices, recent technologies, company updates, live information, and other information that may have changed after the model's knowledge cutoff.\n\nDo not use this tool for general knowledge or conceptual questions that can be answered directly by the language model."
+  "web_agent_tool": "Delegate the user's request to the Web Agent when the answer requires searching the internet. Suitable for current events, breaking news, weather, stock prices, recent technologies, company updates, live information, and other information that may have changed after the model's knowledge cutoff.\n\nDo not use this tool for general knowledge or conceptual questions that can be answered directly by the language model.",
+
+  "arxiv_agent_tool": "Delegate the user's request to the ArXiv Agent when the user needs research papers, academic literature, scientific papers, technical papers, or paper discovery. The ArXiv Agent searches arXiv and returns relevant paper information. Do not use this tool for general web searches or news.",
 }
