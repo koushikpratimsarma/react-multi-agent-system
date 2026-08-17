@@ -9,10 +9,11 @@ from prompts import RESEARCH_AGENT_PROMPT
 from tools.tavily_search import tavily_web_search
 from tools.crawl_html import crawl_html_page
 from tools.pdf_url_reader import extract_pdf_text
+from agents.arxiv_agent import ask_arxiv_agent
 
 research_agent = create_agent(
     model=model,
-    tools=[tavily_web_search, crawl_html_page, extract_pdf_text],
+    tools=[tavily_web_search, crawl_html_page, extract_pdf_text, ask_arxiv_agent],
     system_prompt=RESEARCH_AGENT_PROMPT,
     name="research_agent",
 )
