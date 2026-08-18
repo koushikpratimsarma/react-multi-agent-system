@@ -38,6 +38,11 @@ def ask_research_agent(messages):
         {
             "messages": messages
         },
+        config={
+            "configurable":{
+                "thread_id":"research_thread"
+            }
+        },
         stream_mode=["custom", "updates"],
         version="v2",
     ):
