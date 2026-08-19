@@ -30,6 +30,11 @@ def ask_web_agent(messages):
         {
             "messages": messages
         },
+         config={
+            "configurable":{
+                "thread_id":"web_thread"
+            }
+        },
         stream_mode=["custom", "updates"],
         version="v2",
     ):

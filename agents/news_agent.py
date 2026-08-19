@@ -29,6 +29,13 @@ def ask_news_agent(messages):
 
     for chunk in news_agent.stream(
         {"messages": messages},
+
+         config={
+            "configurable":{
+                "thread_id":"news_thread"
+            }
+        },
+
         stream_mode=["custom", "updates"],
         version="v2",
     ):

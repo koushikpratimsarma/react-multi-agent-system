@@ -1,6 +1,7 @@
 import json
 
 from langchain.agents import create_agent
+from langgraph.checkpoint.memory import InMemorySaver
 from langchain.tools import tool
 
 from prompts import ARXIV_AGENT_PROMPT
@@ -12,11 +13,15 @@ with open("descriptions.json", "r", encoding="utf-8") as f:
     descriptions = json.load(f)
 
 
+checkpointer = InMemorySaver()
+
+
 arxiv_agent = create_agent(
     model=model,
     tools=[arxiv_search],
     system_prompt=ARXIV_AGENT_PROMPT,
     name="arxiv_agent",
+    checkpointer=checkpointer,
 )
 
 
@@ -27,6 +32,12 @@ def ask_arxiv_agent(messages):
     for chunk in arxiv_agent.stream(
         {
             "messages": messages
+        },
+
+         config={
+            "configurable":{
+                "thread_id":"arxiv_thread"
+            }
         },
         stream_mode=["custom", "updates"],
         version="v2",
