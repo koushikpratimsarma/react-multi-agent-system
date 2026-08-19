@@ -1,17 +1,23 @@
 import json
 
 from langchain.agents import create_agent
+from langgraph.checkpoint.memory import InMemorySaver
 from langchain.tools import tool
 
 from config import model
 from prompts import NEWS_AGENT_PROMPT
 from tools.exa_news_search import exa_news_search
 
+
+checkpointer = InMemorySaver()
+
+
 news_agent = create_agent(
     model=model,
     tools=[exa_news_search],
     system_prompt=NEWS_AGENT_PROMPT,
     name="news_agent",
+    checkpointer=checkpointer,
 )
 
 with open("descriptions.json", "r", encoding="utf-8") as f:

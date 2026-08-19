@@ -1,17 +1,21 @@
 import json
 
 from langchain.agents import create_agent
+from langgraph.checkpoint.memory import InMemorySaver
 from langchain.tools import tool
 
 from config import model
 from prompts import WEB_AGENT_PROMPT
 from tools.tavily_search import tavily_web_search
 
+checkpointer = InMemorySaver()
+
 web_agent = create_agent(
     model=model,
     tools=[tavily_web_search],
     system_prompt=WEB_AGENT_PROMPT,
     name="web_agent",
+    checkpointer=checkpointer,
 )
 
 
