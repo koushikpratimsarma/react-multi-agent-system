@@ -1,41 +1,63 @@
-from agents.supervisor_agent import ask_supervisor_agent
+from langgraph.checkpoint.postgres import PostgresSaver
+
+from config import POSTGRES_URI
+from agents.supervisor_agent import (
+    create_supervisor_agent,
+    ask_supervisor_agent,
+)
 
 
 # ---------------------------------------------------------
-# 6. Main program
+# Main program
 # ---------------------------------------------------------
 
 def main():
-    print("ReAct Multi-Agent System")
-    print("Type 'exit' to stop.")
 
-    messages = []
+    with PostgresSaver.from_conn_string(POSTGRES_URI) as checkpointer:
 
-    while True:
-        question = input("You: ").strip()
+        # Create/update LangGraph checkpoint tables
+        checkpointer.setup()
 
-        if question.lower() in {"exit", "quit"}:
-            print("Agent stopped.")
-            break
-
-        if not question:
-            continue
-
-        messages.append(
-            {
-                "role": "user",
-                "content": question,
-            }
+        # Supervisor uses PostgreSQL checkpointer
+        supervisor_agent = create_supervisor_agent(
+            checkpointer
         )
 
-        answer = ask_supervisor_agent(messages)
+        print("ReAct Multi-Agent System")
+        print("Type 'exit' to stop.")
 
-        messages.append(
-            {
-                "role": "assistant",
-                "content": answer,
-            }
-        )
+        messages = []
+
+        while True:
+
+            question = input("You: ").strip()
+
+            if question.lower() in {"exit", "quit"}:
+                print("Agent stopped.")
+                break
+
+            if not question:
+                continue
+
+            messages.append(
+                {
+                    "role": "user",
+                    "content": question,
+                }
+            )
+
+            answer = ask_supervisor_agent(
+                supervisor_agent,
+                messages,
+            )
+
+            messages.append(
+                {
+                    "role": "assistant",
+                    "content": answer,
+                }
+            )
+
 
 if __name__ == "__main__":
     main()
