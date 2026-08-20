@@ -1,24 +1,13 @@
 import arxiv
-
+import json
 from langchain.tools import ToolRuntime, tool
 
 
-ARXIV_SEARCH_TOOL_DESCRIPTION = """
-Search academic papers on arXiv.
 
-Use this tool for:
-- research papers
-- academic literature
-- scientific papers
-- technical research
-- finding papers by topic or keyword
+with open("descriptions.json", "r", encoding="utf-8") as f:
+    descriptions = json.load(f)
 
-Returns paper titles, authors, publication dates,
-abstracts, arXiv IDs, and PDF URLs.
-"""
-
-
-@tool(description=ARXIV_SEARCH_TOOL_DESCRIPTION)
+@tool(description=descriptions["arxiv_search_tool"])
 def arxiv_search(
     query: str,
     runtime: ToolRuntime,
