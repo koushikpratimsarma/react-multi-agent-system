@@ -1,6 +1,7 @@
 import arxiv
 import json
 from langchain.tools import ToolRuntime, tool
+from db.database import save_tool_call
 
 
 
@@ -14,6 +15,7 @@ def arxiv_search(
 ) -> str:
 
     writer = runtime.stream_writer
+    thread_id = runtime.config["configurable"]["thread_id"]
 
     writer(f"Searching arXiv for: {query}")
 
@@ -57,6 +59,14 @@ PDF URL: {result.pdf_url}
         writer("\n========== ARXIV SEARCH RESULTS ==========")
         writer(clean_results)
         writer("==========================================")
+
+        save_tool_call(
+            thread_id=thread_id,
+            agent_name="arxiv_agent",
+            tool_name="arxiv_search",
+            tool_input=query,
+            tool_output=clean_results,
+        )
 
         return clean_results
 

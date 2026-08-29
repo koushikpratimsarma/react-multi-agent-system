@@ -2,11 +2,12 @@ import json
 
 from langchain.agents import create_agent
 from langgraph.checkpoint.memory import InMemorySaver
-from langchain.tools import tool
+from langchain.tools import ToolRuntime, tool
 
 from prompts import ARXIV_AGENT_PROMPT
 from config import model
 from tools.arxiv_search import arxiv_search
+from db.database import save_tool_call
 
 
 with open("descriptions.json", "r", encoding="utf-8") as f:
@@ -26,7 +27,7 @@ arxiv_agent = create_agent(
 
 
 @tool(description=descriptions["arxiv_agent_tool"])
-def ask_arxiv_agent(messages):
+def ask_arxiv_agent(messages, runtime= ToolRuntime):
     final_answer = ""
 
     for chunk in arxiv_agent.stream(
@@ -59,5 +60,13 @@ def ask_arxiv_agent(messages):
 
                         if content:
                             final_answer = content
+
+    save_tool_call(
+        thread_id=thread_id,
+        agent_name="research_agent",
+        tool_name="ask_arxiv_agent",
+        tool_input=str(messages),
+        tool_output=final_answer,
+    )
 
     return final_answer

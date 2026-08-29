@@ -7,6 +7,8 @@ from langchain.tools import tool
 from config import model
 from prompts import WEB_AGENT_PROMPT
 from tools.tavily_search import tavily_web_search
+from db.database import save_tool_call
+
 
 checkpointer = InMemorySaver()
 
@@ -25,6 +27,8 @@ with open("descriptions.json", "r", encoding="utf-8") as f:
 @tool(description=descriptions["web_agent_tool"])
 def ask_web_agent(messages):
     final_answer = ""
+
+    thread_id="web_thread"
 
     for chunk in web_agent.stream(
         {
@@ -59,5 +63,13 @@ def ask_web_agent(messages):
     # if final_answer:
     #     print(f"\nWeb Assistant: {final_answer}\n")
 
+    save_tool_call(
+        thread_id=thread_id,
+        agent_name="web_agent",
+        tool_name="tavily_web_search",
+        tool_input=str(messages),
+        tool_output=final_answer,
+    )
+        
     return final_answer
 

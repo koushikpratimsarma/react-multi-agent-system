@@ -5,6 +5,8 @@ from langchain.tools import ToolRuntime, tool
 
 from config import TAVILY_API_KEY
 
+from db.database import save_tool_call
+
 
 
 
@@ -44,6 +46,7 @@ def tavily_web_search(
     query: str,
     runtime: ToolRuntime,
 ) -> str:
+
     writer = runtime.stream_writer
 
     writer(f"Searching Tavily for: {query}")
@@ -100,9 +103,27 @@ def tavily_web_search(
         writer(clean_results)
         writer("===========================================")
 
-        return json.dumps(data, indent=2)
+        tool_output = json.dumps(data, indent=2)
+
+        # Get current LangGraph execution information
+        execution_info = runtime.execution_info
+
+        thread_id = execution_info.thread_id
+
+        save_tool_call(
+            thread_id=thread_id,
+            agent_name="UNKNOWN_AGENT",
+            tool_name="tavily_web_search",
+            tool_input=query,
+            tool_output=tool_output,
+        )
+
+        return tool_output
 
     except requests.exceptions.RequestException as error:
-        writer(f"Tavily search failed: {error}")
 
-        return f"Tavily search failed: {error}"
+        error_message = f"Tavily search failed: {error}"
+
+        writer(error_message)
+
+        return error_message

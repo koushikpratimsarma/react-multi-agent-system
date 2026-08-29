@@ -22,7 +22,7 @@ def create_supervisor_agent(checkpointer):
         checkpointer=checkpointer,
     )
 
-def ask_supervisor_agent(supervisor_agent, messages):
+def ask_supervisor_agent(supervisor_agent, messages, thread_id,):
 
     final_answer = ""
 
@@ -32,7 +32,7 @@ def ask_supervisor_agent(supervisor_agent, messages):
         },
         config={
             "configurable": {
-                "thread_id": "supervisor-thread"
+                "thread_id": thread_id
             }
         },
         stream_mode=["custom", "updates"],

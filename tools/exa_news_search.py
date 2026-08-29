@@ -1,6 +1,7 @@
 import json
 import requests
 from langchain.tools import ToolRuntime, tool
+from db.database import save_tool_call
 
 from config import EXA_API_KEY
 
@@ -60,6 +61,8 @@ def exa_news_search(
     runtime: ToolRuntime,
 ) -> str:
     writer = runtime.stream_writer
+    thread_id = runtime.config["configurable"]["thread_id"]
+    
 
     writer(f"Searching Exa News for: {query}")
 
@@ -106,7 +109,15 @@ def exa_news_search(
         writer(clean_results)
         writer("======================================")
 
-        return json.dumps(data, indent=2)
+        save_tool_call(
+                thread_id=thread_id,
+                agent_name="news_agent",
+                tool_name="news_search",
+                tool_input=query,
+                tool_output=clean_results,
+        )
+        
+        return clean_results
 
     except requests.exceptions.RequestException as error:
         writer(f"Exa news search failed: {error}")

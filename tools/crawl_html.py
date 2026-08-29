@@ -1,8 +1,12 @@
+from turtle import title
+
 import requests
 import json
 
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
+
+from db.database import save_tool_call
 
 from langchain.tools import ToolRuntime, tool
 
@@ -16,6 +20,7 @@ def crawl_html_page(
     runtime: ToolRuntime,
 ) -> str:
     writer = runtime.stream_writer
+    thread_id = runtime.config["configurable"]["thread_id"]
 
     writer(f"Opening HTML page: {url}")
 
@@ -104,13 +109,23 @@ def crawl_html_page(
         writer(clean_text[:500])
         writer("=======================================")
 
-        return f"""
+        tool_output = f"""
 Title: {title}
 URL: {url}
 
 Extracted content:
 {clean_text}
 """.strip()
+
+        save_tool_call(
+            thread_id=thread_id,
+            agent_name="research_agent",
+            tool_name="crawl_html_page",
+            tool_input=url,
+            tool_output=tool_output,
+        )
+
+        return tool_output
 
     except requests.exceptions.RequestException as error:
         writer(f"HTML crawling failed: {error}")

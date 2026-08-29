@@ -7,6 +7,10 @@ from langchain.tools import tool
 from config import model
 from prompts import RESEARCH_AGENT_PROMPT
 
+from db.database import save_message
+
+# from middleware.tool_limit import ToolCallLimitMiddleware
+
 from tools.tavily_search import tavily_web_search
 from tools.crawl_html import crawl_html_page
 from tools.pdf_url_reader import extract_pdf_text
@@ -15,6 +19,10 @@ from agents.arxiv_agent import ask_arxiv_agent
 
 checkpointer = InMemorySaver()
 
+# tool_limit = ToolCallLimitMiddleware(
+#     max_tool_calls=2
+# )
+
 
 research_agent = create_agent(
     model=model,
@@ -22,6 +30,8 @@ research_agent = create_agent(
     system_prompt=RESEARCH_AGENT_PROMPT,
     name="research_agent",
     checkpointer=checkpointer,
+    # middleware=[tool_limit],
+
 )
 
 
@@ -66,5 +76,12 @@ def ask_research_agent(messages):
 
     # if final_answer:
     #     print(f"\nResearch Assistant:\n{final_answer}\n")
+
+    save_message(
+    thread_id="research_thread",
+    role="agent",
+    content=final_answer,
+    agent_name="research_agent",
+    )
 
     return final_answer

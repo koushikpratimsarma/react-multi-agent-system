@@ -3,6 +3,8 @@ import pymupdf
 import json
 from langchain.tools import ToolRuntime, tool
 
+from db.database import save_tool_call
+
 
 with open("descriptions.json", "r", encoding="utf-8") as f:
     descriptions = json.load(f)
@@ -13,6 +15,7 @@ def extract_pdf_text(
     runtime: ToolRuntime,
 ) -> str:
     writer = runtime.stream_writer
+    thread_id = runtime.config["configurable"]["thread_id"]
 
     writer(f"Opening PDF document: {url}")
 
@@ -82,13 +85,23 @@ def extract_pdf_text(
         writer(full_text[:1500])
         writer("===========================================")
 
-        return f"""
+        tool_output = f"""
 PDF URL: {url}
 Pages extracted: {len(extracted_pages)}
 
 Extracted content:
 {full_text}
 """.strip()
+
+        save_tool_call(
+            thread_id=thread_id,
+            agent_name="research_agent",
+            tool_name="extract_pdf_text",
+            tool_input=url,
+            tool_output=tool_output,
+        )
+
+        return tool_output
 
     except requests.exceptions.RequestException as error:
         writer(f"PDF download failed: {error}")
