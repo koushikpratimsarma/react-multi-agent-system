@@ -4,6 +4,8 @@ from langchain.agents import create_agent
 from langgraph.checkpoint.memory import InMemorySaver
 from langchain.tools import tool
 
+from middleware.tool_limit import ToolCallLimitMiddleware
+
 from config import model
 from prompts import NEWS_AGENT_PROMPT
 from tools.exa_news_search import exa_news_search
@@ -19,6 +21,9 @@ news_agent = create_agent(
     system_prompt=NEWS_AGENT_PROMPT,
     name="news_agent",
     checkpointer=checkpointer,
+    middleware=[
+        ToolCallLimitMiddleware(max_tool_calls=3)
+    ],
 )
 
 with open("descriptions.json", "r", encoding="utf-8") as f:
