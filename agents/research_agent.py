@@ -3,13 +3,11 @@ import json
 from langchain.agents import create_agent
 from langgraph.checkpoint.memory import InMemorySaver
 from langchain.tools import tool
-
+from middleware.tool_limit import ToolCallLimitMiddleware
 from config import model
 from prompts import RESEARCH_AGENT_PROMPT
 
 from db.database import save_message
-
-# from middleware.tool_limit import ToolCallLimitMiddleware
 
 from tools.tavily_search import tavily_web_search
 from tools.crawl_html import crawl_html_page
@@ -19,18 +17,15 @@ from agents.arxiv_agent import ask_arxiv_agent
 
 checkpointer = InMemorySaver()
 
-# tool_limit = ToolCallLimitMiddleware(
-#     max_tool_calls=2
-# )
-
-
 research_agent = create_agent(
     model=model,
     tools=[tavily_web_search, crawl_html_page, extract_pdf_text, ask_arxiv_agent],
     system_prompt=RESEARCH_AGENT_PROMPT,
     name="research_agent",
     checkpointer=checkpointer,
-    # middleware=[tool_limit],
+    middleware=[
+        ToolCallLimitMiddleware(max_tool_calls=8)
+    ],
 
 )
 
