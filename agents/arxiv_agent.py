@@ -3,7 +3,7 @@ import json
 from langchain.agents import create_agent
 from langgraph.checkpoint.memory import InMemorySaver
 from langchain.tools import ToolRuntime, tool
-
+from middleware.tool_limit import ToolCallLimitMiddleware
 from prompts import ARXIV_AGENT_PROMPT
 from config import model
 from tools.arxiv_search import arxiv_search
@@ -23,6 +23,9 @@ arxiv_agent = create_agent(
     system_prompt=ARXIV_AGENT_PROMPT,
     name="arxiv_agent",
     checkpointer=checkpointer,
+    middleware=[
+        ToolCallLimitMiddleware(max_tool_calls=3)
+    ],
 )
 
 
