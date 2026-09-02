@@ -24,12 +24,14 @@ def create_chat_response(request: ChatRequest) -> ChatResponse:
             content=request.message,
             agent_name=None,
         )
-
-        answer = ask_supervisor_agent(
-            supervisor_agent,
-            messages,
-            thread_id,
-        )
+        try:
+            answer = ask_supervisor_agent(
+                supervisor_agent,
+                messages,
+                thread_id,
+            )
+        except Exception as e:
+            answer = str(e)
 
         save_message(
             thread_id=thread_id,
