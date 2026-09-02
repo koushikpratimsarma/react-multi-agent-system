@@ -2,7 +2,7 @@ from langchain.agents import create_agent
 
 from config import model
 from prompts import SUPERVISOR_PROMPT
-
+from middleware.agent_limit import AgentCallLimitMiddleware
 from agents.web_agent import ask_web_agent
 from agents.news_agent import ask_news_agent
 from agents.research_agent import ask_research_agent
@@ -20,6 +20,9 @@ def create_supervisor_agent(checkpointer):
         system_prompt=SUPERVISOR_PROMPT,
         name="supervisor_agent",
         checkpointer=checkpointer,
+        middleware=[
+            AgentCallLimitMiddleware(max_agent_calls=5)
+        ],
     )
 
 def ask_supervisor_agent(supervisor_agent, messages, thread_id,):
