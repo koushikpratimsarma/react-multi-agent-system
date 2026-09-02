@@ -65,8 +65,8 @@ def ask_arxiv_agent(messages, runtime= ToolRuntime):
                             final_answer = content
 
     save_tool_call(
-        thread_id=thread_id,
-        agent_name="research_agent",
+        thread_id="arxiv_thread",
+        agent_name="arxiv_agent",
         tool_name="ask_arxiv_agent",
         tool_input=str(messages),
         tool_output=final_answer,

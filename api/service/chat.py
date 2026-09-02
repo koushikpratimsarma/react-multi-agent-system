@@ -31,7 +31,8 @@ def create_chat_response(request: ChatRequest) -> ChatResponse:
                 thread_id,
             )
         except Exception as e:
-            answer = str(e)
+            print(f"[ERROR] {type(e).__name__}: {e}")
+            raise
 
         save_message(
             thread_id=thread_id,
