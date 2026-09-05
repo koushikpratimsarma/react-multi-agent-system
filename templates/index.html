@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>AI Agent</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-950 text-gray-100">
+
+    <div class="flex h-screen">
+
+        <!-- Sidebar -->
+        <aside class="w-64 border-r border-gray-800 bg-gray-900 p-4">
+
+            <!-- Logo -->
+            <div class="mb-6 flex items-center gap-3">
+                <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-700">
+                    🤖
+                </div>
+
+                <h1 class="text-lg font-semibold">
+                    AI Agent
+                </h1>
+            </div>
+
+
+            <!-- New Chat -->
+            <button
+                class="mb-6 w-full rounded-lg border border-gray-700 px-4 py-2 text-left hover:bg-gray-800"
+            >
+                + New Chat
+            </button>
+
+
+            <!-- Chat History -->
+            <div>
+                <p class="mb-3 text-xs font-semibold uppercase text-gray-500">
+                    Recent Chats
+                </p>
+
+                <div class="space-y-1">
+
+                    <button
+                        class="w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-gray-800"
+                    >
+                        RAG research
+                    </button>
+
+                    <button
+                        class="w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-gray-800"
+                    >
+                        AI Agents
+                    </button>
+
+                    <button
+                        class="w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-gray-800"
+                    >
+                        Latest AI news
+                    </button>
+
+                </div>
+            </div>
+
+        </aside>
+
+
+        <!-- Main Chat Area -->
+        <main class="flex flex-1 flex-col">
+
+
+            <!-- Header -->
+            <header class="flex h-14 items-center justify-between border-b border-gray-800 px-6">
+
+                <div>
+                    <h2 class="font-semibold">
+                        AI Assistant
+                    </h2>
+
+                    <p class="text-xs text-gray-500">
+                        Multi-Agent System
+                    </p>
+                </div>
+
+                <button class="rounded-lg px-3 py-2 hover:bg-gray-800">
+                    ⚙️
+                </button>
+
+            </header>
+
+
+            <!-- Messages -->
+            <section class="flex-1 overflow-y-auto px-6 py-8">
+
+                <div class="mx-auto max-w-3xl space-y-6">
+
+
+                    <!-- Welcome -->
+                    <div class="text-center">
+
+                        <div class="mb-4 text-5xl">
+                            🤖
+                        </div>
+
+                        <h2 class="text-2xl font-semibold">
+                            How can I help you?
+                        </h2>
+
+                        <p class="mt-2 text-gray-500">
+                            Ask me anything about AI, RAG, research or technology.
+                        </p>
+
+                    </div>
+
+
+                    <!-- Example User Message -->
+                    <div class="hidden flex justify-end">
+
+                        <div class="max-w-xl rounded-2xl bg-gray-800 px-4 py-3">
+                            What is Retrieval Augmented Generation?
+                        </div>
+
+                    </div>
+
+
+                    <!-- Example Assistant Message -->
+                    <div class="hidden flex gap-3">
+
+                        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gray-700">
+                            🤖
+                        </div>
+
+                        <div class="max-w-xl rounded-2xl bg-gray-900 px-4 py-3">
+                            RAG stands for Retrieval Augmented Generation...
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+
+            <!-- Input Area -->
+            <div class="border-t border-gray-800 p-4">
+
+                <div class="mx-auto max-w-3xl">
+
+                    <div class="flex items-end gap-2 rounded-2xl border border-gray-700 bg-gray-900 p-2">
+
+                        <textarea
+                            id="messageInput"
+                            rows="1"
+                            placeholder="Ask anything..."
+                            class="max-h-40 flex-1 resize-none bg-transparent px-3 py-2 outline-none placeholder:text-gray-500"
+                        ></textarea>
+
+
+                        <button
+                            id="sendButton"
+                            class="rounded-xl bg-white px-4 py-2 font-medium text-black hover:bg-gray-200"
+                        >
+                            ➤
+                        </button>
+
+                    </div>
+
+                    <p class="mt-2 text-center text-xs text-gray-600">
+                        AI can make mistakes. Check important information.
+                    </p>
+
+                </div>
+
+            </div>
+
+        </main>
+
+    </div>
+    <script src="/static/js/chat.js"></script>
+</body>
+
+</html>
