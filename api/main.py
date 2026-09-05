@@ -2,7 +2,7 @@
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
+from fastapi.staticfiles import StaticFiles
 from api.router.chat import router as chat_router
 from api.router.root import router as root_router
 
@@ -11,6 +11,14 @@ app = FastAPI(
     title="Multi-Agent System",
     version="1.0.0",
 )
+
+
+app.mount(
+    "/static",
+    StaticFiles(directory="static"),
+    name="static",
+)
+
 
 app.add_middleware(
     CORSMiddleware,

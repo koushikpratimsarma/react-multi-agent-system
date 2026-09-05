@@ -1,11 +1,18 @@
 """Health and root routes."""
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
+from fastapi.templating import Jinja2Templates
 
 
 router = APIRouter()
 
+templates = Jinja2Templates(directory="templates")
+
 
 @router.get("/")
-def root() -> dict[str, str]:
-    return {"message": "Agent API is running"}
+async def root(request: Request):
+    return templates.TemplateResponse(
+        request=request,
+        name="index.html",
+        context={},
+    )
