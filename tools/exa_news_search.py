@@ -1,12 +1,14 @@
 import json
-import requests
+import httpx
+
 from langchain.tools import ToolRuntime, tool
-from db.database import save_tool_call
+from db.database import async_save_tool_call
 
 from config import EXA_API_KEY
 
 
 def format_exa_results(data: dict) -> str:
+
     results = data.get("results", [])
 
     if not results:
@@ -15,24 +17,43 @@ def format_exa_results(data: dict) -> str:
     formatted_results = []
 
     for index, result in enumerate(results, start=1):
-        title = result.get("title", "No title")
-        url = result.get("url", "No URL")
+
+        title = result.get(
+            "title",
+            "No title",
+        )
+
+        url = result.get(
+            "url",
+            "No URL",
+        )
+
         published_date = result.get(
             "publishedDate",
             "Not available",
         )
+
         author = result.get(
             "author",
             "Not available",
         )
 
-        highlights = result.get("highlights", [])
-        text = result.get("text", "")
+        highlights = result.get(
+            "highlights",
+            [],
+        )
+
+        text = result.get(
+            "text",
+            "",
+        )
 
         if highlights:
             content = " ".join(highlights)
+
         elif text:
             content = text
+
         else:
             content = "No content available."
 
@@ -47,24 +68,39 @@ Summary: {content}
 URL: {url}
 """.strip()
 
-        formatted_results.append(formatted_result)
+        formatted_results.append(
+            formatted_result
+        )
 
-    return "\n\n".join(formatted_results)
+    return "\n\n".join(
+        formatted_results
+    )
 
 
-with open("descriptions.json", "r", encoding="utf-8") as f:
+with open(
+    "descriptions.json",
+    "r",
+    encoding="utf-8",
+) as f:
+
     descriptions = json.load(f)
 
+
 @tool(description=descriptions["exa_news_tool"])
-def exa_news_search(
+async def exa_news_search(
     query: str,
     runtime: ToolRuntime,
 ) -> str:
-    writer = runtime.stream_writer
-    thread_id = runtime.config["configurable"]["thread_id"]
-    
 
-    writer(f"Searching Exa News for: {query}")
+    writer = runtime.stream_writer
+
+    thread_id = runtime.config[
+        "configurable"
+    ]["thread_id"]
+
+    writer(
+        f"Searching Exa News for: {query}"
+    )
 
     url = "https://api.exa.ai/search"
 
@@ -86,40 +122,68 @@ def exa_news_search(
     }
 
     try:
-        writer("Sending request to Exa API")
 
-        response = requests.post(
-            url=url,
-            headers=headers,
-            json=payload,
-            timeout=30,
+        writer(
+            "Sending request to Exa API"
         )
+
+        async with httpx.AsyncClient(
+            timeout=30.0
+        ) as client:
+
+            response = await client.post(
+                url,
+                headers=headers,
+                json=payload,
+            )
 
         response.raise_for_status()
 
-        writer("Exa response received")
+        writer(
+            "Exa response received"
+        )
 
         data = response.json()
 
-        clean_results = format_exa_results(data)
-
-        writer("\n========== EXA NEWS RESULTS ==========")
-        writer(f"Search query: {query}")
-        writer(f"Total results: {len(data.get('results', []))}")
-        writer(clean_results)
-        writer("======================================")
-
-        save_tool_call(
-                thread_id=thread_id,
-                agent_name="news_agent",
-                tool_name="news_search",
-                tool_input=query,
-                tool_output=clean_results,
+        clean_results = format_exa_results(
+            data
         )
-        
+
+        writer(
+            "\n========== EXA NEWS RESULTS =========="
+        )
+
+        writer(
+            f"Search query: {query}"
+        )
+
+        writer(
+            f"Total results: "
+            f"{len(data.get('results', []))}"
+        )
+
+        writer(clean_results)
+
+        writer(
+            "======================================"
+        )
+
+        await async_save_tool_call(
+            thread_id=thread_id,
+            agent_name="news_agent",
+            tool_name="news_search",
+            tool_input=query,
+            tool_output=clean_results,
+        )
+
         return clean_results
 
-    except requests.exceptions.RequestException as error:
-        writer(f"Exa news search failed: {error}")
+    except httpx.RequestError as error:
 
-        return f"Exa news search failed: {error}"
+        writer(
+            f"Exa news search failed: {error}"
+        )
+
+        return (
+            f"Exa news search failed: {error}"
+        )
