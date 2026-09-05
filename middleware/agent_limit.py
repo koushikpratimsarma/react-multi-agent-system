@@ -1,3 +1,5 @@
+from urllib import request
+
 from langchain.agents.middleware import AgentMiddleware
 
 
@@ -7,7 +9,7 @@ class AgentCallLimitMiddleware(AgentMiddleware):
     def __init__(self, max_agent_calls: int = 5):
         self.max_agent_calls = max_agent_calls
         self.agent_call_count = 0
-
+    #synchronous version of wrap_tool_call
     def wrap_tool_call(self, request, handler):
         """Intercept agent-tool calls before execution."""
 
@@ -25,3 +27,19 @@ class AgentCallLimitMiddleware(AgentMiddleware):
         )
 
         return handler(request)
+    #asynchronous version of wrap_tool_call
+    async def awrap_tool_call(self, request, handler):
+
+        if self.agent_call_count >= self.max_agent_calls:
+            raise RuntimeError(
+                "Maximum agent calls exceeded"
+            )
+
+        self.agent_call_count += 1
+
+        print(
+            f"[AGENT LIMIT] "
+            f"{self.agent_call_count}/{self.max_agent_calls}"
+        )
+
+        return await handler(request)
