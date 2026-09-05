@@ -9,7 +9,7 @@ from middleware.tool_limit import ToolCallLimitMiddleware
 from config import model
 from prompts import NEWS_AGENT_PROMPT
 from tools.exa_news_search import exa_news_search
-from db.database import save_tool_call
+from db.database import async_save_tool_call
 
 
 checkpointer = InMemorySaver()
@@ -30,10 +30,10 @@ with open("descriptions.json", "r", encoding="utf-8") as f:
     descriptions = json.load(f)
     
 @tool(description=descriptions["news_agent_tool"])
-def ask_news_agent(messages):
+async def ask_news_agent(messages):
     final_answer = ""
     thread_id = "news_thread"
-    for chunk in news_agent.stream(
+    async for chunk in news_agent.astream(
         {"messages": messages},
 
          config={
@@ -63,7 +63,7 @@ def ask_news_agent(messages):
                         if content:
                             final_answer = content
 
-    save_tool_call(
+    await async_save_tool_call(
         thread_id=thread_id,
         agent_name="news_agent",
         tool_name="news_search",

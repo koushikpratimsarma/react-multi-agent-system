@@ -7,7 +7,7 @@ from middleware.tool_limit import ToolCallLimitMiddleware
 from config import model
 from prompts import RESEARCH_AGENT_PROMPT
 
-from db.database import save_message
+from db.database import async_save_message
 
 from tools.tavily_search import tavily_web_search
 from tools.crawl_html import crawl_html_page
@@ -36,10 +36,10 @@ with open("descriptions.json", "r", encoding="utf-8") as f:
     descriptions = json.load(f)
     
 @tool(description=descriptions["research_agent_tool"])
-def ask_research_agent(messages):
+async def ask_research_agent(messages):
     final_answer = ""
 
-    for chunk in research_agent.stream(
+    async for chunk in research_agent.astream(
         {
             "messages": messages
         },
@@ -72,7 +72,7 @@ def ask_research_agent(messages):
     # if final_answer:
     #     print(f"\nResearch Assistant:\n{final_answer}\n")
 
-    save_message(
+    await async_save_message(
     thread_id="research_thread",
     role="agent",
     content=final_answer,

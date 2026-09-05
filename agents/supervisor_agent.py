@@ -25,11 +25,12 @@ def create_supervisor_agent(checkpointer):
         ],
     )
 
-def ask_supervisor_agent(supervisor_agent, messages, thread_id,):
-
-    final_answer = ""
-
-    for chunk in supervisor_agent.stream(
+async def ask_supervisor_agent(
+    supervisor_agent,
+    messages,
+    thread_id,
+):
+    result = await supervisor_agent.ainvoke(
         {
             "messages": messages
         },
@@ -38,41 +39,22 @@ def ask_supervisor_agent(supervisor_agent, messages, thread_id,):
                 "thread_id": thread_id
             }
         },
-        stream_mode=["custom", "updates"],
-        version="v2",
-    ):
+    )
 
-        chunk_type = chunk.get("type")
+    final_answer = ""
 
-        if chunk_type == "custom":
-            print(
-                f"[SUPERVISOR PROGRESS] "
-                f"{chunk.get('data')}"
+    for message in result["messages"]:
+
+        if getattr(message, "type", None) == "ai":
+
+            content = getattr(
+                message,
+                "content",
+                ""
             )
 
-        elif chunk_type == "updates":
-
-            update_data = chunk.get("data", {})
-
-            for node_update in update_data.values():
-
-                node_messages = node_update.get(
-                    "messages",
-                    []
-                )
-
-                for message in node_messages:
-
-                    if getattr(message, "type", None) == "ai":
-
-                        content = getattr(
-                            message,
-                            "content",
-                            ""
-                        )
-
-                        if content:
-                            final_answer = content
+            if content:
+                final_answer = content
 
     if final_answer:
         print(
@@ -81,3 +63,67 @@ def ask_supervisor_agent(supervisor_agent, messages, thread_id,):
         )
 
     return final_answer
+
+
+async def stream_supervisor_agent(
+    supervisor_agent,
+    messages,
+    thread_id,
+):
+    async for chunk in supervisor_agent.astream(
+        {
+            "messages": messages
+        },
+        config={
+            "configurable": {
+                "thread_id": thread_id
+            }
+        },
+        stream_mode=["custom", "messages"],
+        version="v2",
+    ):
+
+        chunk_type = chunk.get("type")
+
+        # --------------------------------
+        # Tool / agent progress
+        # --------------------------------
+        if chunk_type == "custom":
+
+            yield {
+                "type": "progress",
+                "data": chunk.get("data"),
+            }
+
+        # --------------------------------
+        # LLM token streaming
+        # --------------------------------  
+        elif chunk_type == "messages":
+
+            message = chunk.get("data")
+
+            if not message:
+                continue
+
+            if isinstance(message, tuple):
+
+                message_chunk, metadata = message
+
+                # Only stream the supervisor agent's model output
+                if (
+                    metadata.get("lc_agent_name") != "supervisor_agent"
+                    or metadata.get("langgraph_node") != "model"
+                ):
+                    continue
+
+                content = getattr(
+                    message_chunk,
+                    "content",
+                    "",
+                )
+
+                if content:
+                    yield {
+                        "type": "token",
+                        "data": content,
+                    }

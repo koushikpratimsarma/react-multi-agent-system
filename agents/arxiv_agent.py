@@ -3,11 +3,12 @@ import json
 from langchain.agents import create_agent
 from langgraph.checkpoint.memory import InMemorySaver
 from langchain.tools import ToolRuntime, tool
+
 from middleware.tool_limit import ToolCallLimitMiddleware
 from prompts import ARXIV_AGENT_PROMPT
 from config import model
 from tools.arxiv_search import arxiv_search
-from db.database import save_tool_call
+from db.database import async_save_tool_call
 
 
 with open("descriptions.json", "r", encoding="utf-8") as f:
@@ -30,41 +31,66 @@ arxiv_agent = create_agent(
 
 
 @tool(description=descriptions["arxiv_agent_tool"])
-def ask_arxiv_agent(messages, runtime= ToolRuntime):
+async def ask_arxiv_agent(
+    messages,
+    runtime: ToolRuntime,
+):
+
     final_answer = ""
 
-    for chunk in arxiv_agent.stream(
+    async for chunk in arxiv_agent.astream(
         {
             "messages": messages
         },
-
-         config={
-            "configurable":{
-                "thread_id":"arxiv_thread"
+        config={
+            "configurable": {
+                "thread_id": "arxiv_thread"
             }
         },
         stream_mode=["custom", "updates"],
         version="v2",
     ):
+
         chunk_type = chunk.get("type")
 
+        # Progress events
         if chunk_type == "custom":
-            print(f"[ARXIV PROGRESS] {chunk.get('data')}")
 
+            print(
+                f"[ARXIV PROGRESS] {chunk.get('data')}"
+            )
+
+        # Agent updates
         elif chunk_type == "updates":
+
             update_data = chunk.get("data", {})
 
-            for node_update in update_data.values(): 
-                node_messages = node_update.get("messages", [])
+            for node_update in update_data.values():
+
+                node_messages = node_update.get(
+                    "messages",
+                    []
+                )
 
                 for message in node_messages:
-                    if getattr(message, "type", None) == "ai":
-                        content = getattr(message, "content", "")
+
+                    if getattr(
+                        message,
+                        "type",
+                        None
+                    ) == "ai":
+
+                        content = getattr(
+                            message,
+                            "content",
+                            ""
+                        )
 
                         if content:
                             final_answer = content
 
-    save_tool_call(
+    # Save tool call asynchronously
+    await async_save_tool_call(
         thread_id="arxiv_thread",
         agent_name="arxiv_agent",
         tool_name="ask_arxiv_agent",
