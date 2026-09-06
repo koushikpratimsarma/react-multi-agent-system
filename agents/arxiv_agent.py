@@ -37,6 +37,7 @@ async def ask_arxiv_agent(
 ):
 
     final_answer = ""
+    writer = runtime.stream_writer
 
     async for chunk in arxiv_agent.astream(
         {
@@ -56,9 +57,13 @@ async def ask_arxiv_agent(
         # Progress events
         if chunk_type == "custom":
 
+            progress = chunk.get("data")
+
             print(
-                f"[ARXIV PROGRESS] {chunk.get('data')}"
+                f"[ARXIV PROGRESS] {progress}"
             )
+
+            writer(progress)
 
         # Agent updates
         elif chunk_type == "updates":

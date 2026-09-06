@@ -2,7 +2,7 @@ import json
 
 from langchain.agents import create_agent
 from langgraph.checkpoint.memory import InMemorySaver
-from langchain.tools import tool
+from langchain.tools import ToolRuntime, tool
 from middleware.tool_limit import ToolCallLimitMiddleware
 from config import model
 from prompts import WEB_AGENT_PROMPT
@@ -30,9 +30,10 @@ with open("descriptions.json", "r", encoding="utf-8") as f:
 
 
 @tool(description=descriptions["web_agent_tool"])
-async def ask_web_agent(messages):
+async def ask_web_agent(messages, runtime: ToolRuntime):
 
     final_answer = ""
+    writer = runtime.stream_writer
 
     thread_id = "web_thread"
 
@@ -53,9 +54,13 @@ async def ask_web_agent(messages):
 
         if chunk_type == "custom":
 
+            progress = chunk.get("data")
+
             print(
-                f"[PROGRESS] {chunk.get('data')}"
+                f"[PROGRESS] {progress}"
             )
+
+            writer(progress)
 
         elif chunk_type == "updates":
 

@@ -2,7 +2,7 @@ import json
 
 from langchain.agents import create_agent
 from langgraph.checkpoint.memory import InMemorySaver
-from langchain.tools import tool
+from langchain.tools import ToolRuntime, tool
 
 from middleware.tool_limit import ToolCallLimitMiddleware
 
@@ -30,9 +30,10 @@ with open("descriptions.json", "r", encoding="utf-8") as f:
     descriptions = json.load(f)
     
 @tool(description=descriptions["news_agent_tool"])
-async def ask_news_agent(messages):
+async def ask_news_agent(messages, runtime: ToolRuntime):
     final_answer = ""
     thread_id = "news_thread"
+    writer = runtime.stream_writer
     async for chunk in news_agent.astream(
         {"messages": messages},
 
@@ -48,7 +49,9 @@ async def ask_news_agent(messages):
         chunk_type = chunk.get("type")
 
         if chunk_type == "custom":
-            print(f"[NEWS PROGRESS] {chunk.get('data')}")
+            progress = chunk.get("data")
+            print(f"[NEWS PROGRESS] {progress}")
+            writer(progress)
 
         elif chunk_type == "updates":
             update_data = chunk.get("data", {})

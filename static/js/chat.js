@@ -59,12 +59,8 @@ function createAssistantMessage() {
 
         <div class="assistant-content max-w-xl rounded-2xl bg-gray-900 px-4 py-3">
 
-            <div class="progress-container flex items-center gap-2 text-sm text-gray-500">
-                <span class="animate-pulse">●</span>
-
-                <span class="progress-text">
-                    Thinking...
-                </span>
+            <div class="progress-container mb-3 space-y-1 text-sm text-gray-500">
+                <div class="progress-text space-y-1"></div>
             </div>
 
             <div class="answer-content whitespace-pre-wrap"></div>
@@ -113,8 +109,40 @@ function updateProgress(
     );
 
 
-    progressText.textContent =
-        message;
+    const lowerMessage = String(message).toLowerCase();
+    let stage;
+
+    if (lowerMessage.includes("exa") || lowerMessage.includes("news")) {
+        stage = {
+            key: "news",
+            label: "Searching news..."
+        };
+    } else if (
+        lowerMessage.includes("arxiv") ||
+        lowerMessage.includes("paper")
+    ) {
+        stage = {
+            key: "papers",
+            label: "Researching papers..."
+        };
+    } else if (
+        lowerMessage.includes("tavily") ||
+        lowerMessage.includes("web")
+    ) {
+        stage = {
+            key: "web",
+            label: "Searching web..."
+        };
+    }
+
+    if (!stage || progressText.querySelector(`[data-stage="${stage.key}"]`)) {
+        return;
+    }
+
+    const progressLine = document.createElement("div");
+    progressLine.dataset.stage = stage.key;
+    progressLine.textContent = stage.label;
+    progressText.appendChild(progressLine);
 
 
     progressContainer.classList.remove(
@@ -393,12 +421,6 @@ async function sendMessage() {
                             );
 
 
-                            // Hide progress
-                            removeProgress(
-                                progressContainer
-                            );
-
-
                             // Add token
                             answerContent.textContent +=
                                 data.data;
@@ -447,10 +469,7 @@ async function sendMessage() {
         // Finish
         // --------------------------------------------------
 
-        removeProgress(
-            progressContainer
-        );
-
+        removeProgress(progressContainer);
         scrollToBottom();
 
     }

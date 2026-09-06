@@ -149,24 +149,24 @@ async def exa_news_search(
             data
         )
 
-        writer(
-            "\n========== EXA NEWS RESULTS =========="
-        )
+        # writer(
+        #     "\n========== EXA NEWS RESULTS =========="
+        # )
 
-        writer(
-            f"Search query: {query}"
-        )
+        # writer(
+        #     f"Search query: {query}"
+        # )
 
-        writer(
-            f"Total results: "
-            f"{len(data.get('results', []))}"
-        )
+        # writer(
+        #     f"Total results: "
+        #     f"{len(data.get('results', []))}"
+        # )
 
-        writer(clean_results)
+        # writer(clean_results)
 
-        writer(
-            "======================================"
-        )
+        # writer(
+        #     "======================================"
+        # )
 
         await async_save_tool_call(
             thread_id=thread_id,

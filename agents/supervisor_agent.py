@@ -70,6 +70,7 @@ async def stream_supervisor_agent(
     messages,
     thread_id,
 ):
+
     async for chunk in supervisor_agent.astream(
         {
             "messages": messages
@@ -86,18 +87,27 @@ async def stream_supervisor_agent(
         chunk_type = chunk.get("type")
 
         # --------------------------------
-        # Tool / agent progress
+        # TOOL / AGENT PROGRESS
         # --------------------------------
+
         if chunk_type == "custom":
+
+            progress = chunk.get("data")
+
+            print(
+                "[CUSTOM PROGRESS]",
+                progress
+            )
 
             yield {
                 "type": "progress",
-                "data": chunk.get("data"),
+                "data": progress,
             }
 
         # --------------------------------
-        # LLM token streaming
-        # --------------------------------  
+        # LLM TOKEN STREAMING
+        # --------------------------------
+
         elif chunk_type == "messages":
 
             message = chunk.get("data")
@@ -109,21 +119,29 @@ async def stream_supervisor_agent(
 
                 message_chunk, metadata = message
 
-                # Only stream the supervisor agent's model output
-                if (
-                    metadata.get("lc_agent_name") != "supervisor_agent"
-                    or metadata.get("langgraph_node") != "model"
-                ):
-                    continue
-
-                content = getattr(
-                    message_chunk,
-                    "content",
-                    "",
+                agent_name = metadata.get(
+                    "lc_agent_name"
                 )
 
-                if content:
-                    yield {
-                        "type": "token",
-                        "data": content,
-                    }
+                node_name = metadata.get(
+                    "langgraph_node"
+                )
+
+                # Only Supervisor model tokens
+                if (
+                    agent_name == "supervisor_agent"
+                    and node_name == "model"
+                ):
+
+                    content = getattr(
+                        message_chunk,
+                        "content",
+                        "",
+                    )
+
+                    if content:
+
+                        yield {
+                            "type": "token",
+                            "data": content,
+                        }
