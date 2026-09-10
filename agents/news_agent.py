@@ -1,19 +1,14 @@
 import json
-
 from langchain.agents import create_agent
 from langgraph.checkpoint.memory import InMemorySaver
 from langchain.tools import ToolRuntime, tool
-
 from middleware.tool_limit import ToolCallLimitMiddleware
-
 from config import model
 from prompts import NEWS_AGENT_PROMPT
 from tools.exa_news_search import exa_news_search
 from db.database import async_save_tool_call
 
-
 checkpointer = InMemorySaver()
-
 
 news_agent = create_agent(
     model=model,
@@ -32,8 +27,36 @@ with open("descriptions.json", "r", encoding="utf-8") as f:
 @tool(description=descriptions["news_agent_tool"])
 async def ask_news_agent(messages, runtime: ToolRuntime):
     final_answer = ""
-    thread_id = "news_thread"
+    #thread_id = "news_thread"
     writer = runtime.stream_writer
+
+    writer({
+        "event_type": "agent_start",
+        "agent": "news_agent",
+        "message": "News agent started",
+    })
+
+    query = messages
+
+    if isinstance(messages, list) and messages:
+        last_message = messages[-1]
+
+        if isinstance(last_message, dict):
+            query = last_message.get("content", "")
+        else:
+            query = getattr(
+                last_message,
+                "content",
+                str(last_message),
+            )
+    if not isinstance(query, str):
+        query = str(query)
+    writer({
+        "event_type": "subagent_query",
+        "agent": "news_agent",
+        "query": query,
+    })
+
     async for chunk in news_agent.astream(
         {"messages": messages},
 
@@ -49,9 +72,14 @@ async def ask_news_agent(messages, runtime: ToolRuntime):
         chunk_type = chunk.get("type")
 
         if chunk_type == "custom":
-            progress = chunk.get("data")
-            print(f"[NEWS PROGRESS] {progress}")
-            writer(progress)
+
+            data = chunk.get("data")
+
+            print(
+                f"[NEWS PROGRESS] {data}"
+            )
+
+            writer(data)
 
         elif chunk_type == "updates":
             update_data = chunk.get("data", {})
@@ -67,12 +95,17 @@ async def ask_news_agent(messages, runtime: ToolRuntime):
                             final_answer = content
 
     await async_save_tool_call(
-        thread_id=thread_id,
+        thread_id="news_thread",
         agent_name="news_agent",
         tool_name="news_search",
         tool_input=str(messages),
         tool_output=final_answer,
     )
+    writer({
+        "event_type": "agent_complete",
+        "agent": "news_agent",
+        "message": "News agent completed",
+    })
     
     return final_answer
 

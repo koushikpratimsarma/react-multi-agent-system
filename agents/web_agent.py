@@ -1,5 +1,4 @@
 import json
-
 from langchain.agents import create_agent
 from langgraph.checkpoint.memory import InMemorySaver
 from langchain.tools import ToolRuntime, tool
@@ -9,9 +8,7 @@ from prompts import WEB_AGENT_PROMPT
 from tools.tavily_search import tavily_web_search
 from db.database import async_save_tool_call
 
-
 checkpointer = InMemorySaver()
-
 
 web_agent = create_agent(
     model=model,
@@ -24,16 +21,40 @@ web_agent = create_agent(
     ],
 )
 
-
 with open("descriptions.json", "r", encoding="utf-8") as f:
     descriptions = json.load(f)
-
 
 @tool(description=descriptions["web_agent_tool"])
 async def ask_web_agent(messages, runtime: ToolRuntime):
 
     final_answer = ""
     writer = runtime.stream_writer
+    writer({
+        "event_type": "agent_start",
+        "agent": "web_agent",
+        "message": "Web agent started",
+    })
+    query = messages
+
+    if isinstance(messages, list) and messages:
+        last_message = messages[-1]
+
+        if isinstance(last_message, dict):
+            query = last_message.get("content", "")
+        else:
+            query = getattr(
+                last_message,
+                "content",
+                str(last_message),
+            )
+    if not isinstance(query, str):
+        query = str(query)
+
+    writer({
+        "event_type": "subagent_query",
+        "agent": "web_agent",
+        "query": query,
+    })
 
     thread_id = "web_thread"
 
@@ -54,13 +75,14 @@ async def ask_web_agent(messages, runtime: ToolRuntime):
 
         if chunk_type == "custom":
 
-            progress = chunk.get("data")
+            data = chunk.get("data")
 
             print(
-                f"[PROGRESS] {progress}"
+                f"[WEB PROGRESS] {data}"
             )
 
-            writer(progress)
+            # Forward custom events to supervisor
+            writer(data)
 
         elif chunk_type == "updates":
 
@@ -68,7 +90,6 @@ async def ask_web_agent(messages, runtime: ToolRuntime):
                 "data",
                 {}
             )
-
             for node_update in update_data.values():
 
                 node_messages = node_update.get(
@@ -100,5 +121,10 @@ async def ask_web_agent(messages, runtime: ToolRuntime):
         tool_input=str(messages),
         tool_output=final_answer,
     )
-
+    writer({
+        "event_type": "agent_complete",
+        "agent": "web_agent",
+        "message": "Web agent completed",
+    })
+    
     return final_answer

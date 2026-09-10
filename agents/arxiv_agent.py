@@ -1,22 +1,17 @@
 import json
-
 from langchain.agents import create_agent
 from langgraph.checkpoint.memory import InMemorySaver
 from langchain.tools import ToolRuntime, tool
-
 from middleware.tool_limit import ToolCallLimitMiddleware
 from prompts import ARXIV_AGENT_PROMPT
 from config import model
 from tools.arxiv_search import arxiv_search
 from db.database import async_save_tool_call
 
-
 with open("descriptions.json", "r", encoding="utf-8") as f:
     descriptions = json.load(f)
 
-
 checkpointer = InMemorySaver()
-
 
 arxiv_agent = create_agent(
     model=model,
@@ -29,7 +24,6 @@ arxiv_agent = create_agent(
     ],
 )
 
-
 @tool(description=descriptions["arxiv_agent_tool"])
 async def ask_arxiv_agent(
     messages,
@@ -39,6 +33,36 @@ async def ask_arxiv_agent(
     final_answer = ""
     writer = runtime.stream_writer
 
+    # ARXIV AGENT START
+    writer({
+        "event_type": "agent_start",
+        "agent": "arxiv_agent",
+        "message": "ArXiv agent started",
+    })
+
+    # SUB-AGENT QUERY
+    query = messages
+
+    if isinstance(messages, list) and messages:
+        last_message = messages[-1]
+
+        if isinstance(last_message, dict):
+            query = last_message.get("content", "")
+        else:
+            query = getattr(
+                last_message,
+                "content",
+                str(last_message),
+            )
+    if not isinstance(query, str):
+        query = str(query)
+    writer({
+        "event_type": "subagent_query",
+        "agent": "arxiv_agent",
+        "query": query,
+    })
+
+    # ARXIV AGENT STREAM    
     async for chunk in arxiv_agent.astream(
         {
             "messages": messages
@@ -54,16 +78,17 @@ async def ask_arxiv_agent(
 
         chunk_type = chunk.get("type")
 
-        # Progress events
+        # CUSTOM EVENTS
         if chunk_type == "custom":
 
-            progress = chunk.get("data")
+            data = chunk.get("data")
 
             print(
-                f"[ARXIV PROGRESS] {progress}"
+                f"[ARXIV PROGRESS] {data}"
             )
 
-            writer(progress)
+            # Forward source/progress event
+            writer(data)
 
         # Agent updates
         elif chunk_type == "updates":
@@ -103,4 +128,11 @@ async def ask_arxiv_agent(
         tool_output=final_answer,
     )
 
+    # ARXIV AGENT COMPLETE
+    writer({
+        "event_type": "agent_complete",
+        "agent": "arxiv_agent",
+        "message": "ArXiv agent completed",
+    })
+    
     return final_answer

@@ -7,7 +7,6 @@ from agents.web_agent import ask_web_agent
 from agents.news_agent import ask_news_agent
 from agents.research_agent import ask_research_agent
 
-
 def create_supervisor_agent(checkpointer):
 
     return create_agent(
@@ -64,13 +63,11 @@ async def ask_supervisor_agent(
 
     return final_answer
 
-
 async def stream_supervisor_agent(
     supervisor_agent,
     messages,
     thread_id,
 ):
-
     async for chunk in supervisor_agent.astream(
         {
             "messages": messages
@@ -86,32 +83,36 @@ async def stream_supervisor_agent(
 
         chunk_type = chunk.get("type")
 
-        # --------------------------------
         # TOOL / AGENT PROGRESS
-        # --------------------------------
-
         if chunk_type == "custom":
 
-            progress = chunk.get("data")
+            data = chunk.get("data")
 
             print(
                 "[CUSTOM PROGRESS]",
-                progress
+                data
             )
 
-            yield {
-                "type": "progress",
-                "data": progress,
-            }
+            if (
+                isinstance(data, dict)
+                and data.get("event_type") == "source"
+            ):
+                yield {
+                    "type": "sources",
+                    "data": data,
+                }
 
-        # --------------------------------
+            else:
+
+                yield {
+                    "type": "progress",
+                    "data": data,
+                }
+
         # LLM TOKEN STREAMING
-        # --------------------------------
 
         elif chunk_type == "messages":
-
             message = chunk.get("data")
-
             if not message:
                 continue
 
