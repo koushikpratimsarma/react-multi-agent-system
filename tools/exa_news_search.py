@@ -1,14 +1,10 @@
 import json
 import httpx
-
 from langchain.tools import ToolRuntime, tool
 from db.database import async_save_tool_call
-
 from config import EXA_API_KEY
 
-
 def format_exa_results(data: dict) -> str:
-
     results = data.get("results", [])
 
     if not results:
@@ -85,7 +81,6 @@ with open(
 
     descriptions = json.load(f)
 
-
 @tool(description=descriptions["exa_news_tool"])
 async def exa_news_search(
     query: str,
@@ -98,9 +93,15 @@ async def exa_news_search(
         "configurable"
     ]["thread_id"]
 
-    writer(
-        f"Searching Exa News for: {query}"
-    )
+    writer({
+        "event_type": "tool_start",
+        "agent": "news_agent",
+        "tool": "exa_news_search",
+        "message": "Searching Exa News...",
+        "input": {
+            "query": query,
+        },
+    })
 
     url = "https://api.exa.ai/search"
 
@@ -122,10 +123,12 @@ async def exa_news_search(
     }
 
     try:
-
-        writer(
-            "Sending request to Exa API"
-        )
+        writer({
+            "event_type": "tool_progress",
+            "agent": "news_agent",
+            "tool": "exa_news_search",
+            "message": "Sending request to Exa API",
+        })
 
         async with httpx.AsyncClient(
             timeout=30.0
@@ -139,34 +142,64 @@ async def exa_news_search(
 
         response.raise_for_status()
 
-        writer(
-            "Exa response received"
-        )
-
         data = response.json()
 
-        clean_results = format_exa_results(
-            data
-        )
+        results = data.get("results", [])
 
-        # writer(
-        #     "\n========== EXA NEWS RESULTS =========="
+        # STREAM SOURCES ONE BY ONE
+        for index, result in enumerate(
+            results,
+            start=1,
+        ):
+
+            source = {
+                "title": result.get(
+                    "title",
+                    "No title",
+                ),
+
+                "url": result.get(
+                    "url",
+                    "",
+                ),
+
+                "published_date": result.get(
+                    "publishedDate",
+                    "Not available",
+                ),
+
+                "author": result.get(
+                    "author",
+                    "Not available",
+                ),
+            }
+
+            # Send this source immediately
+            writer({
+                "event_type": "source",
+                "agent": "news_agent",
+                "source_type": "news",
+                "index": index,
+                "source": source,
+            })
+
+        clean_results = format_exa_results(data)
+        writer({
+            "event_type": "tool_complete",
+            "agent": "news_agent",
+            "tool": "exa_news_search",
+            "message": "Exa News search completed",
+            "result_count": len(results),
+        })
+        # results_output = (
+        #     f"\n========== EXA NEWS RESULTS ==========\n"
+        #     f"Search query: {query}\n"
+        #     f"Total results: {len(data.get('results', []))}\n\n"
+        #     f"{clean_results}\n"
+        #     f"======================================"
         # )
 
-        # writer(
-        #     f"Search query: {query}"
-        # )
-
-        # writer(
-        #     f"Total results: "
-        #     f"{len(data.get('results', []))}"
-        # )
-
-        # writer(clean_results)
-
-        # writer(
-        #     "======================================"
-        # )
+        # writer(results_output)
 
         await async_save_tool_call(
             thread_id=thread_id,
@@ -180,10 +213,23 @@ async def exa_news_search(
 
     except httpx.RequestError as error:
 
-        writer(
+        error_message = (
             f"Exa news search failed: {error}"
         )
 
-        return (
-            f"Exa news search failed: {error}"
+        writer({
+            "event_type": "tool_error",
+            "agent": "news_agent",
+            "tool": "exa_news_search",
+            "message": error_message,
+        })
+
+        await async_save_tool_call(
+            thread_id=thread_id,
+            agent_name="news_agent",
+            tool_name="news_search",
+            tool_input=query,
+            tool_output=error_message,
         )
+
+        return error_message

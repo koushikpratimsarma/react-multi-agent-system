@@ -1,11 +1,8 @@
 import json
 import httpx
-
 from langchain.tools import ToolRuntime, tool
-
 from config import TAVILY_API_KEY
 from db.database import async_save_tool_call
-
 
 def format_tavily_results(data: dict) -> str:
 
@@ -55,7 +52,6 @@ URL: {url}
 
     return "\n\n".join(formatted_results)
 
-
 with open(
     "descriptions.json",
     "r",
@@ -64,7 +60,6 @@ with open(
 
     descriptions = json.load(f)
 
-
 @tool(description=descriptions["tavily_tool"])
 async def tavily_web_search(
     query: str,
@@ -72,10 +67,17 @@ async def tavily_web_search(
 ) -> str:
 
     writer = runtime.stream_writer
+    thread_id = runtime.config["configurable"]["thread_id"]
 
-    writer(
-        f"Searching Tavily for: {query}"
-    )
+    writer({
+        "event_type": "tool_start",
+        "agent": "web_agent",
+        "tool": "tavily_web_search",
+        "message": "Searching Tavily...",
+        "input": {
+            "query": query,
+        },
+    })
 
     url = "https://api.tavily.com/search"
 
@@ -106,10 +108,12 @@ async def tavily_web_search(
     }
 
     try:
-
-        writer(
-            "Sending request to Tavily API"
-        )
+        writer({
+            "event_type": "tool_progress",
+            "agent": "web_agent",
+            "tool": "tavily_web_search",
+            "message": "Sending request to Tavily API",
+        })
 
         async with httpx.AsyncClient(
             timeout=30.0
@@ -123,53 +127,74 @@ async def tavily_web_search(
 
         response.raise_for_status()
 
-        writer(
-            "Tavily response received"
-        )
-
         data = response.json()
+
+        # STREAM WEB SOURCES ONE BY ONE
+        results = data.get("results", [])
+
+        for index, result in enumerate(
+            results,
+            start=1,
+        ):
+
+            source = {
+                "title": result.get(
+                    "title",
+                    "No title",
+                ),
+                "url": result.get(
+                    "url",
+                    "",
+                ),
+                "published_date": result.get(
+                    "published_date",
+                    "Not available",
+                ),
+                "author": result.get(
+                    "author",
+                    "Not available",
+                ),
+            }
+
+            writer({
+                "event_type": "source",
+                "agent": "web_agent",
+                "source_type": "web",
+                "index": index,
+                "source": source,
+            })
 
         clean_results = format_tavily_results(
             data
         )
 
-        # writer(
-        #     "\n========== TAVILY SEARCH RESULTS =========="
+        writer({
+            "event_type": "tool_complete",
+            "agent": "web_agent",
+            "tool": "tavily_web_search",
+            "message": "Tavily search completed",
+            "result_count": len(results),
+        })
+
+        # results_output = (
+        #     f"\n========== TAVILY SEARCH RESULTS ==========\n"
+        #     f"Search query: {query}\n"
+        #     f"Total results: {len(data.get('results', []))}\n\n"
+        #     f"{clean_results}\n"
+        #     f"==========================================="
         # )
 
-        # writer(
-        #     f"Search query: {query}"
-        # )
-
-        # writer(
-        #     f"Total results: "
-        #     f"{len(data.get('results', []))}"
-        # )
-
-        # writer(clean_results)
-
-        # writer(
-        #     "==========================================="
-        # )
-
-        tool_output = json.dumps(
-            data,
-            indent=2
-        )
-
-        execution_info = runtime.execution_info
-
-        thread_id = execution_info.thread_id
+        # writer(results_output)
 
         await async_save_tool_call(
             thread_id=thread_id,
-            agent_name="UNKNOWN_AGENT",
+            agent_name="web_agent",
             tool_name="tavily_web_search",
             tool_input=query,
-            tool_output=tool_output,
+            tool_output=clean_results,
         )
 
-        return tool_output
+        return clean_results
 
     except httpx.RequestError as error:
 
@@ -177,6 +202,19 @@ async def tavily_web_search(
             f"Tavily search failed: {error}"
         )
 
-        writer(error_message)
+        writer({
+            "event_type": "tool_error",
+            "agent": "web_agent",
+            "tool": "tavily_web_search",
+            "message": error_message,
+        })
+
+        await async_save_tool_call(
+            thread_id=thread_id,
+            agent_name="web_agent",
+            tool_name="tavily_web_search",
+            tool_input=query,
+            tool_output=error_message,
+        )
 
         return error_message

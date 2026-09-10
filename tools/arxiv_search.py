@@ -1,28 +1,30 @@
 import json
 import httpx
-
+import xml.etree.ElementTree as ET
 from langchain.tools import ToolRuntime, tool
-
 from db.database import async_save_tool_call
-
 
 with open("descriptions.json", "r", encoding="utf-8") as f:
     descriptions = json.load(f)
-
 
 @tool(description=descriptions["arxiv_search_tool"])
 async def arxiv_search(
     query: str,
     runtime: ToolRuntime,
 ) -> str:
-    """
-    Search arXiv asynchronously.
-    """
-
+   
     thread_id = runtime.config["configurable"]["thread_id"]
     writer = runtime.stream_writer
 
-    writer(f"Searching arXiv for: {query}")
+    writer({
+        "event_type": "tool_start",
+        "agent": "arxiv_agent",
+        "tool": "arxiv_search",
+        "message": "Searching arXiv...",
+        "input": {
+            "query": query,
+        },
+    })
 
     url = "https://export.arxiv.org/api/query"
 
@@ -35,30 +37,27 @@ async def arxiv_search(
     }
 
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-
+        async with httpx.AsyncClient(
+            timeout=30.0
+        ) as client:
             response = await client.get(
                 url,
                 params=params,
             )
-
             response.raise_for_status()
-
             xml_data = response.text
 
-        # Parse the arXiv XML response
-        import xml.etree.ElementTree as ET
-
+        # PARSE ARXIV XML
         root = ET.fromstring(xml_data)
-
         namespace = {
             "atom": "http://www.w3.org/2005/Atom"
         }
-
         results = []
 
-        for entry in root.findall("atom:entry", namespace):
-
+        for index, entry in enumerate(
+            root.findall("atom:entry", namespace),
+            start=1,
+        ):
             title = entry.findtext(
                 "atom:title",
                 default="",
@@ -89,6 +88,7 @@ async def arxiv_search(
                 "atom:author",
                 namespace,
             ):
+
                 name = author.findtext(
                     "atom:name",
                     default="",
@@ -98,6 +98,38 @@ async def arxiv_search(
                 if name:
                     authors.append(name)
 
+            # STREAM ONE SOURCE AT A TIME
+            source = {
+                "title": title or "Untitled paper",
+
+                "url": paper_url,
+
+                "published_date": (
+                    published
+                    if published
+                    else "Not available"
+                ),
+
+                "author": (
+                    ", ".join(authors)
+                    if authors
+                    else "Not available"
+                ),
+            }
+
+            writer({
+                "event_type": "source",
+
+                "agent": "arxiv_agent",
+
+                "source_type": "paper",
+
+                "index": index,
+
+                "source": source,
+            })
+
+            # STORE RESULT FOR LLM
             results.append(
                 f"""
 Title: {title}
@@ -108,13 +140,26 @@ URL: {paper_url}
 """.strip()
             )
 
+        # FINAL TOOL RESULT
         if not results:
-            final_answer = f"No arXiv papers found for: {query}"
+
+            final_answer = (
+                f"No arXiv papers found for: {query}"
+            )
+
         else:
-            final_answer = "\n\n".join(results)
 
-        writer("arXiv search completed.")
-
+            final_answer = "\n\n".join(
+                results
+            )
+        writer({
+            "event_type": "tool_complete",
+            "agent": "arxiv_agent",
+            "tool": "arxiv_search",
+            "message": "arXiv search completed",
+            "result_count": len(results),
+        })
+        # DATABASE
         await async_save_tool_call(
             thread_id=thread_id,
             agent_name="arxiv_agent",
@@ -122,14 +167,20 @@ URL: {paper_url}
             tool_input=query,
             tool_output=final_answer,
         )
-
         return final_answer
-
+    
     except httpx.RequestError as error:
 
-        error_message = f"arXiv request failed: {error}"
+        error_message = (
+            f"arXiv request failed: {error}"
+        )
 
-        writer(error_message)
+        writer({
+        "event_type": "tool_error",
+        "agent": "arxiv_agent",
+        "tool": "arxiv_search",
+        "message": error_message,
+    })
 
         await async_save_tool_call(
             thread_id=thread_id,
@@ -143,10 +194,16 @@ URL: {paper_url}
 
     except Exception as error:
 
-        error_message = f"arXiv search failed: {error}"
-
-        writer(error_message)
-
+        error_message = (
+            f"arXiv search failed: {error}"
+        )
+        writer({
+            "event_type": "tool_error",
+            "agent": "arxiv_agent",
+            "tool": "arxiv_search",
+            "message": error_message,
+        })
+       
         await async_save_tool_call(
             thread_id=thread_id,
             agent_name="arxiv_agent",

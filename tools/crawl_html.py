@@ -1,18 +1,12 @@
 import json
-
 import httpx
-
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
-
 from db.database import async_save_tool_call
-
 from langchain.tools import ToolRuntime, tool
-
 
 with open("descriptions.json", "r", encoding="utf-8") as f:
     descriptions = json.load(f)
-
 
 @tool(description=descriptions["html_crawler_tool"])
 async def crawl_html_page(
@@ -21,14 +15,19 @@ async def crawl_html_page(
 ) -> str:
 
     writer = runtime.stream_writer
-
     thread_id = runtime.config[
         "configurable"
     ]["thread_id"]
 
-    writer(
-        f"Opening HTML page: {url}"
-    )
+    writer({
+        "event_type": "tool_start",
+        "agent": "research_agent",
+        "tool": "crawl_html_page",
+        "message": "Opening HTML page...",
+        "input": {
+            "url": url,
+        },
+    })
 
     parsed_url = urlparse(url)
 
@@ -36,10 +35,19 @@ async def crawl_html_page(
         "http",
         "https",
     ):
-        return (
+        error_message = (
             "Invalid URL. Only HTTP and HTTPS "
             "URLs are supported."
         )
+
+        writer({
+            "event_type": "tool_error",
+            "agent": "research_agent",
+            "tool": "crawl_html_page",
+            "message": error_message,
+        })
+
+        return error_message
 
     headers = {
         "User-Agent": (
@@ -49,10 +57,12 @@ async def crawl_html_page(
     }
 
     try:
-
-        writer(
-            "Sending request to webpage"
-        )
+        writer({
+            "event_type": "tool_progress",
+            "agent": "research_agent",
+            "tool": "crawl_html_page",
+            "message": "Sending request to webpage",
+        })
 
         async with httpx.AsyncClient(
             timeout=30.0,
@@ -73,22 +83,36 @@ async def crawl_html_page(
 
         if "application/pdf" in content_type:
 
-            return (
+            error_message = (
                 "This URL contains a PDF document. "
                 "Use the PDF extraction tool instead."
             )
 
+            writer({
+                "event_type": "tool_error",
+                "agent": "research_agent",
+                "tool": "crawl_html_page",
+                "message": error_message,
+            })
+
+            return error_message
+
         if "text/html" not in content_type:
 
-            return (
+            error_message = (
                 f"Unsupported content type: "
                 f"{content_type}"
             )
 
-        writer(
-            "HTML page received"
-        )
+            writer({
+                "event_type": "tool_error",
+                "agent": "research_agent",
+                "tool": "crawl_html_page",
+                "message": error_message,
+            })
 
+            return error_message
+        
         soup = BeautifulSoup(
             response.text,
             "html.parser",
@@ -143,30 +167,26 @@ async def crawl_html_page(
             :max_characters
         ]
 
-        writer(
-            "\n========== HTML CRAWL RESULT =========="
-        )
+        writer({
+            "event_type": "tool_complete",
+            "agent": "research_agent",
+            "tool": "crawl_html_page",
+            "message": "HTML page crawled successfully",
+            "title": page_title,
+            "url": url,
+            "extracted_characters": len(clean_text),
+        })
+        
+        # crawl_output = (
+        #     f"\n========== HTML CRAWL RESULT ==========\n"
+        #     f"Title: {page_title}\n"
+        #     f"URL: {url}\n"
+        #     f"Extracted characters: {len(clean_text)}\n\n"
+        #     f"{clean_text[:500]}\n"
+        #     f"======================================="
+        # )
 
-        writer(
-            f"Title: {page_title}"
-        )
-
-        writer(
-            f"URL: {url}"
-        )
-
-        writer(
-            f"Extracted characters: "
-            f"{len(clean_text)}"
-        )
-
-        writer(
-            clean_text[:500]
-        )
-
-        writer(
-            "======================================="
-        )
+        #writer(crawl_output)
 
         tool_output = f"""
 Title: {page_title}
@@ -188,10 +208,25 @@ Extracted content:
 
     except httpx.RequestError as error:
 
-        writer(
+        error_message = (
             f"HTML crawling failed: {error}"
         )
 
-        return (
-            f"HTML crawling failed: {error}"
+        writer({
+            "event_type": "tool_error",
+            "agent": "research_agent",
+            "tool": "crawl_html_page",
+            "message": error_message,
+        })
+
+        await async_save_tool_call(
+            thread_id=thread_id,
+            agent_name="research_agent",
+            tool_name="crawl_html_page",
+            tool_input=url,
+            tool_output=error_message,
         )
+
+        return error_message
+
+    

@@ -1,15 +1,11 @@
 import json
 import httpx
 import pymupdf
-
 from langchain.tools import ToolRuntime, tool
-
 from db.database import async_save_tool_call
-
 
 with open("descriptions.json", "r", encoding="utf-8") as f:
     descriptions = json.load(f)
-
 
 @tool(description=descriptions["pdf_reader_tool"])
 async def extract_pdf_text(
@@ -23,9 +19,15 @@ async def extract_pdf_text(
         "configurable"
     ]["thread_id"]
 
-    writer(
-        f"Opening PDF document: {url}"
-    )
+    writer({
+        "event_type": "tool_start",
+        "agent": "research_agent",
+        "tool": "extract_pdf_text",
+        "message": "Opening PDF document...",
+        "input": {
+            "url": url,
+        },
+    })
 
     headers = {
         "User-Agent": (
@@ -35,8 +37,12 @@ async def extract_pdf_text(
     }
 
     try:
-
-        writer("Downloading PDF")
+        writer({
+            "event_type": "tool_progress",
+            "agent": "research_agent",
+            "tool": "extract_pdf_text",
+            "message": "Downloading PDF",
+        })
 
         async with httpx.AsyncClient(
             timeout=60.0,
@@ -57,13 +63,20 @@ async def extract_pdf_text(
 
         if "application/pdf" not in content_type:
 
-            return (
+            error_message = (
                 "This URL does not appear to contain "
                 "a PDF. "
                 f"Content type: {content_type}"
             )
 
-        writer("PDF downloaded")
+            writer({
+                "event_type": "tool_error",
+                "agent": "research_agent",
+                "tool": "extract_pdf_text",
+                "message": error_message,
+            })
+
+            return error_message
 
         pdf_document = pymupdf.open(
             stream=response.content,
@@ -103,31 +116,25 @@ async def extract_pdf_text(
             :max_characters
         ]
 
-        writer(
-            "\n========== PDF EXTRACTION RESULT =========="
-        )
+        writer({
+            "event_type": "tool_complete",
+            "agent": "research_agent",
+            "tool": "extract_pdf_text",
+            "message": "PDF extraction completed",
+            "url": url,
+            "pages_extracted": len(extracted_pages),
+            "extracted_characters": len(full_text),
+        })
+        # pdf_output = (
+        #     f"\n========== PDF EXTRACTION RESULT ==========\n"
+        #     f"URL: {url}\n"
+        #     f"Pages extracted: {len(extracted_pages)}\n"
+        #     f"Extracted characters: {len(full_text)}\n\n"
+        #     f"{full_text[:1500]}\n"
+        #     f"==========================================="
+        # )
 
-        writer(
-            f"URL: {url}"
-        )
-
-        writer(
-            f"Pages extracted: "
-            f"{len(extracted_pages)}"
-        )
-
-        writer(
-            f"Extracted characters: "
-            f"{len(full_text)}"
-        )
-
-        writer(
-            full_text[:1500]
-        )
-
-        writer(
-            "==========================================="
-        )
+        # writer(pdf_output)
 
         tool_output = f"""
 PDF URL: {url}
@@ -149,20 +156,46 @@ Extracted content:
 
     except httpx.RequestError as error:
 
-        writer(
+        error_message = (
             f"PDF download failed: {error}"
         )
 
-        return (
-            f"PDF download failed: {error}"
+        writer({
+            "event_type": "tool_error",
+            "agent": "research_agent",
+            "tool": "extract_pdf_text",
+            "message": error_message,
+        })
+
+        await async_save_tool_call(
+            thread_id=thread_id,
+            agent_name="research_agent",
+            tool_name="extract_pdf_text",
+            tool_input=url,
+            tool_output=error_message,
         )
+
+        return error_message
 
     except Exception as error:
 
-        writer(
+        error_message = (
             f"PDF extraction failed: {error}"
         )
 
-        return (
-            f"PDF extraction failed: {error}"
+        writer({
+            "event_type": "tool_error",
+            "agent": "research_agent",
+            "tool": "extract_pdf_text",
+            "message": error_message,
+        })
+
+        await async_save_tool_call(
+            thread_id=thread_id,
+            agent_name="research_agent",
+            tool_name="extract_pdf_text",
+            tool_input=url,
+            tool_output=error_message,
         )
+
+        return error_message
