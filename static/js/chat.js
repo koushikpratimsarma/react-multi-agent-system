@@ -1,505 +1,478 @@
-console.log("🔥 CHAT.JS LOADED");
-
 const messageInput = document.getElementById("messageInput");
 const sendButton = document.getElementById("sendButton");
 
-const messagesContainer = document.querySelector(
-    ".mx-auto.max-w-3xl"
-);
-
+const messagesContainer =
+    document.getElementById("chatContainer") ||
+    document.querySelector(".mx-auto.max-w-3xl");
 
 // ==================================================
-// SCROLL
+// BASIC HELPERS
 // ==================================================
 
 function scrollToBottom() {
-    messagesContainer.parentElement.scrollTop =
-        messagesContainer.parentElement.scrollHeight;
+    const container = messagesContainer.parentElement;
+    container.scrollTop = container.scrollHeight;
 }
 
+function addText(parent, text, className = "") {
+    const element = document.createElement("div");
+    element.className = className;
+    element.textContent = text;
+    parent.appendChild(element);
+    return element;
+}
 
 // ==================================================
 // USER MESSAGE
 // ==================================================
 
 function addUserMessage(message) {
+    const wrapper = document.createElement("div");
 
-    const messageDiv = document.createElement("div");
+    wrapper.className = "flex justify-end";
 
-    messageDiv.className = "flex justify-end";
+    const bubble = document.createElement("div");
 
-    messageDiv.innerHTML = `
-        <div class="max-w-xl rounded-2xl bg-gray-800 px-4 py-3">
-            ${message}
-        </div>
-    `;
+    bubble.className =
+        "max-w-xl rounded-2xl bg-gray-800 px-4 py-3 whitespace-pre-wrap";
 
-    messagesContainer.appendChild(messageDiv);
+    bubble.textContent = message;
+
+    wrapper.appendChild(bubble);
+    messagesContainer.appendChild(wrapper);
 
     scrollToBottom();
 }
-
 
 // ==================================================
 // ASSISTANT MESSAGE
 // ==================================================
 
 function createAssistantMessage() {
+    const wrapper = document.createElement("div");
 
-    const assistantDiv =
-        document.createElement("div");
+    wrapper.className = "flex gap-3";
 
-    assistantDiv.className =
-        "flex gap-3";
+    wrapper.innerHTML = `
+        <div class="min-w-0 flex-1">
 
-    assistantDiv.innerHTML = `
-        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gray-700">
-            🤖
-        </div>
+            <details open class="activity-section mb-4">
+                <summary class="cursor-pointer text-sm text-gray-400 hover:text-gray-200">
+                    Agent Activity
+                </summary>
 
-        <div class="assistant-content max-w-xl rounded-2xl bg-gray-900 px-4 py-3">
-
-            <div class="progress-container mb-3 space-y-1 text-sm text-gray-500">
-                <div class="progress-text space-y-1"></div>
-            </div>
+                <div class="activity-list mt-3 space-y-1"></div>
+            </details>
 
             <div class="answer-content whitespace-pre-wrap"></div>
+
+            <details class="sources-section mt-4 hidden">
+                <summary class="cursor-pointer text-sm text-gray-400 hover:text-gray-200">
+                    Sources <span class="source-count"></span>
+                </summary>
+
+                <div class="sources-list mt-3 space-y-2"></div>
+            </details>
 
         </div>
     `;
 
-    messagesContainer.appendChild(
-        assistantDiv
-    );
-
+    messagesContainer.appendChild(wrapper);
+    //assistant.activitySection.open = false;
     scrollToBottom();
-
-
     return {
-        assistantDiv,
-        progressContainer:
-            assistantDiv.querySelector(
-                ".progress-container"
-            ),
-        progressText:
-            assistantDiv.querySelector(
-                ".progress-text"
-            ),
-        answerContent:
-            assistantDiv.querySelector(
-                ".answer-content"
-            )
+        activityList: wrapper.querySelector(".activity-list"),
+        answer: wrapper.querySelector(".answer-content"),
+        sourcesSection: wrapper.querySelector(".sources-section"),
+        sourcesList: wrapper.querySelector(".sources-list"),
+        sourceCount: wrapper.querySelector(".source-count")
     };
 }
 
+// ==================================================
+// LABELS
+// ==================================================
+
+function agentLabel(name) {
+    const labels = {
+        supervisor_agent: "Supervisor",
+        research_agent: "Research Agent",
+        arxiv_agent: "ArXiv Agent",
+        web_agent: "Web Agent",
+        news_agent: "News Agent"
+    };
+
+    return labels[name] || name || "Agent";
+}
+
+function toolLabel(name) {
+    const labels = {
+        arxiv_search: "ArXiv Search",
+        tavily_web_search: "Tavily Web Search",
+        exa_news_search: "Exa News Search",
+        crawl_html_page: "HTML Crawler",
+        extract_pdf_text: "PDF Reader"
+    };
+
+    return labels[name] || name || "Tool";
+}
 
 // ==================================================
-// UPDATE PROGRESS
+// ACTIVITY
 // ==================================================
 
-function updateProgress(
-    progressContainer,
-    progressText,
-    message
-) {
+function addActivity(assistant, text, level = 0) {
+    const row = document.createElement("div");
 
-    console.log(
-        "🔥 UPDATING UI PROGRESS:",
-        message
-    );
+    row.className = "text-sm text-gray-400";
 
+    row.style.paddingLeft = `${level * 20}px`;
 
-    const lowerMessage = String(message).toLowerCase();
-    let stage;
+    row.textContent = text;
 
-    if (lowerMessage.includes("exa") || lowerMessage.includes("news")) {
-        stage = {
-            key: "news",
-            label: "Searching news..."
-        };
-    } else if (
-        lowerMessage.includes("arxiv") ||
-        lowerMessage.includes("paper")
-    ) {
-        stage = {
-            key: "papers",
-            label: "Researching papers..."
-        };
-    } else if (
-        lowerMessage.includes("tavily") ||
-        lowerMessage.includes("web")
-    ) {
-        stage = {
-            key: "web",
-            label: "Searching web..."
-        };
-    }
+    assistant.activityList.appendChild(row);
 
-    if (!stage || progressText.querySelector(`[data-stage="${stage.key}"]`)) {
+    scrollToBottom();
+
+    return row;
+}
+
+// ==================================================
+// EVENTS
+// ==================================================
+
+function handleActivityEvent(data, assistant) {
+    if (!data?.event_type) {
         return;
     }
 
-    const progressLine = document.createElement("div");
-    progressLine.dataset.stage = stage.key;
-    progressLine.textContent = stage.label;
-    progressText.appendChild(progressLine);
+    const type = data.event_type;
+    const agent = agentLabel(data.agent);
+
+    // Agent started
+    if (type === "agent_start") {
+        addActivity(
+            assistant,
+            `${agent} — Started`,
+            data.agent === "arxiv_agent" ? 1 : 0
+        );
+
+        return;
+    }
+
+    // Sub-agent query
+    if (type === "subagent_query") {
+        addActivity(
+            assistant,
+            `${agent} — Query: ${data.query || ""}`,
+            data.agent === "arxiv_agent" ? 1 : 0
+        );
+
+        return;
+    }
+
+    // Tool started
+    if (type === "tool_start") {
+        addActivity(
+            assistant,
+            `${toolLabel(data.tool)} — Started`,
+            2
+        );
+
+        return;
+    }
+
+    // Tool progress
+    if (type === "tool_progress") {
+        addActivity(
+            assistant,
+            `${toolLabel(data.tool)} — ${data.message || ""}`,
+            2
+        );
+
+        return;
+    }
+
+    // Tool completed
+    if (type === "tool_complete") {
+        const count =
+            data.result_count !== undefined
+                ? ` · ${data.result_count} results`
+                : "";
+
+        addActivity(
+            assistant,
+            `${toolLabel(data.tool)} — Completed${count}`,
+            2
+        );
+
+        return;
+    }
+
+    // Tool error
+    if (type === "tool_error") {
+        addActivity(
+            assistant,
+            `${toolLabel(data.tool)} — Error: ${data.message || ""}`,
+            2
+        );
+
+        return;
+    }
+
+    // Agent completed
+    if (type === "agent_complete") {
+        addActivity(
+            assistant,
+            `${agent} — Completed`,
+            data.agent === "arxiv_agent" ? 1 : 0
+        );
+
+        return;
+    }
+
+    // Agent error
+    if (type === "agent_error") {
+        addActivity(
+            assistant,
+            `${agent} — Error: ${data.message || ""}`,
+            data.agent === "arxiv_agent" ? 1 : 0
+        );
+    }
+}
 
 
-    progressContainer.classList.remove(
-        "hidden"
-    );
+// ==================================================
+// SOURCES
+// ==================================================
 
+function addSource(assistant, data) {
+    const source = data?.source || data;
+
+    if (!source) {
+        return;
+    }
+
+    assistant.sourcesSection.classList.remove("hidden");
+
+    const item = document.createElement("div");
+
+    item.className =
+        "rounded-md border border-gray-800 bg-gray-900 px-3 py-2";
+
+    const title = document.createElement("div");
+
+    title.className =
+        "text-sm text-gray-200";
+
+    title.textContent =
+        source.title || "Untitled source";
+
+    item.appendChild(title);
+
+    const meta = [];
+
+    if (
+        source.author &&
+        source.author !== "Not available"
+    ) {
+        meta.push(source.author);
+    }
+
+    if (
+        source.published_date &&
+        source.published_date !== "Not available"
+    ) {
+        meta.push(source.published_date);
+    }
+
+    if (meta.length) {
+        addText(
+            item,
+            meta.join(" · "),
+            "mt-1 text-xs text-gray-500"
+        );
+    }
+
+    if (source.url) {
+        try {
+            const url = new URL(source.url);
+
+            if (
+                url.protocol === "http:" ||
+                url.protocol === "https:"
+            ) {
+                const link = document.createElement("a");
+
+                link.href = url.href;
+                link.target = "_blank";
+                link.rel = "noopener noreferrer";
+
+                link.className =
+                    "mt-1 inline-block text-xs text-blue-400 hover:underline";
+
+                link.textContent = "Open source";
+
+                item.appendChild(link);
+            }
+        } catch {
+            // Ignore invalid URLs.
+        }
+    }
+
+    assistant.sourcesList.appendChild(item);
+
+    const count =
+        assistant.sourcesList.children.length;
+
+    assistant.sourceCount.textContent =
+        ` · ${count}`;
 
     scrollToBottom();
 }
 
-
 // ==================================================
-// REMOVE PROGRESS
+// SSE STREAM
 // ==================================================
 
-function removeProgress(
-    progressContainer
-) {
+async function streamResponse(response, assistant) {
+    if (!response.body) {
+        throw new Error("Response body is empty");
+    }
 
-    console.log(
-        "🔥 REMOVING UI PROGRESS"
-    );
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
 
+    let buffer = "";
 
-    progressContainer.classList.add(
-        "hidden"
-    );
+    while (true) {
+        const { value, done } = await reader.read();
+
+        if (done) {
+            break;
+        }
+
+        buffer += decoder.decode(value, {
+            stream: true
+        });
+
+        const events = buffer.split(/\r?\n\r?\n/);
+
+        buffer = events.pop() || "";
+
+        for (const event of events) {
+            for (const line of event.split(/\r?\n/)) {
+                if (!line.startsWith("data:")) {
+                    continue;
+                }
+
+                const json = line
+                    .replace(/^data:\s*/, "")
+                    .trim();
+
+                if (!json) {
+                    continue;
+                }
+
+                try {
+                    const data = JSON.parse(json);
+
+                    if (data.type === "progress") {
+                        handleActivityEvent(
+                            data.data,
+                            assistant
+                        );
+                    }
+
+                    else if (data.type === "sources") {
+                        addSource(
+                            assistant,
+                            data.data
+                        );
+                    }
+
+                    else if (data.type === "token") {
+                        assistant.answer.textContent +=
+                            data.data;
+
+                        scrollToBottom();
+                    }
+
+                } catch (error) {
+                    console.warn(
+                        "Invalid SSE event:",
+                        error
+                    );
+                }
+            }
+        }
+    }
 }
-
 
 // ==================================================
 // SEND MESSAGE
 // ==================================================
 
 async function sendMessage() {
-
-    console.log(
-        "🔥 SEND MESSAGE CALLED"
-    );
-
-
-    const message =
-        messageInput.value.trim();
-
+    const message = messageInput.value.trim();
 
     if (!message) {
         return;
     }
 
-
-    // --------------------------------------------------
-    // User message
-    // --------------------------------------------------
-
     addUserMessage(message);
 
     messageInput.value = "";
-
     sendButton.disabled = true;
 
-
-    // --------------------------------------------------
-    // Create assistant message
-    // --------------------------------------------------
-
-    const {
-        progressContainer,
-        progressText,
-        answerContent
-    } = createAssistantMessage();
-
+    const assistant =
+        createAssistantMessage();
 
     try {
+        const response = await fetch(
+            "/chat/stream",
+            {
+                method: "POST",
 
-        // --------------------------------------------------
-        // Request
-        // --------------------------------------------------
+                headers: {
+                    "Content-Type":
+                        "application/json"
+                },
 
-        const response =
-            await fetch(
-                "/chat/stream",
-                {
-                    method: "POST",
-
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
-
-                    body: JSON.stringify({
-                        message: message
-                    })
-                }
-            );
-
-
-        console.log(
-            "🔥 RESPONSE RECEIVED:",
-            response
+                body: JSON.stringify({
+                    message
+                })
+            }
         );
 
-
         if (!response.ok) {
-
             throw new Error(
                 `Request failed: ${response.status}`
             );
         }
 
-
-        if (!response.body) {
-
-            throw new Error(
-                "Response body is empty"
-            );
-        }
-
-
-        // --------------------------------------------------
-        // Reader
-        // --------------------------------------------------
-
-        const reader =
-            response.body.getReader();
-
-        const decoder =
-            new TextDecoder();
-
-        let buffer = "";
-
-
-        // --------------------------------------------------
-        // Read stream
-        // --------------------------------------------------
-
-        while (true) {
-
-            const {
-                value,
-                done
-            } = await reader.read();
-
-
-            if (done) {
-
-                console.log(
-                    "🔥 STREAM FINISHED"
-                );
-
-                break;
-            }
-
-
-            // --------------------------------------------------
-            // Decode
-            // --------------------------------------------------
-
-            const chunk =
-                decoder.decode(
-                    value,
-                    {
-                        stream: true
-                    }
-                );
-
-
-            console.log(
-                "🔥 RAW CHUNK:",
-                chunk
-            );
-
-
-            buffer += chunk;
-
-
-            // --------------------------------------------------
-            // Split SSE events
-            // --------------------------------------------------
-
-            const events =
-                buffer.split(
-                    /\r?\n\r?\n/
-                );
-
-
-            buffer =
-                events.pop() || "";
-
-
-            // --------------------------------------------------
-            // Process events
-            // --------------------------------------------------
-
-            for (
-                const event
-                of events
-            ) {
-
-                const lines =
-                    event.split(
-                        /\r?\n/
-                    );
-
-
-                for (
-                    const line
-                    of lines
-                ) {
-
-                    if (
-                        !line.startsWith(
-                            "data:"
-                        )
-                    ) {
-                        continue;
-                    }
-
-
-                    const jsonString =
-                        line
-                            .replace(
-                                /^data:\s*/,
-                                ""
-                            )
-                            .trim();
-
-
-                    if (!jsonString) {
-                        continue;
-                    }
-
-
-                    try {
-
-                        const data =
-                            JSON.parse(
-                                jsonString
-                            );
-
-
-                        console.log(
-                            "🔥 SSE EVENT:",
-                            data
-                        );
-
-
-                        // ==========================================
-                        // PROGRESS
-                        // ==========================================
-
-                        if (
-                            data.type ===
-                            "progress"
-                        ) {
-
-                            updateProgress(
-                                progressContainer,
-                                progressText,
-                                data.data
-                            );
-                        }
-
-
-                        // ==========================================
-                        // TOKEN
-                        // ==========================================
-
-                        else if (
-                            data.type ===
-                            "token"
-                        ) {
-
-                            console.log(
-                                "🔥 TOKEN:",
-                                data.data
-                            );
-
-
-                            // Add token
-                            answerContent.textContent +=
-                                data.data;
-
-
-                            scrollToBottom();
-                        }
-
-
-                        // ==========================================
-                        // FINAL ANSWER
-                        // ==========================================
-
-                        else if (
-                            data.type ===
-                            "answer"
-                        ) {
-
-                            console.log(
-                                "🔥 ANSWER EVENT:",
-                                data.data
-                            );
-
-
-                            // We don't append this
-                            // because token events
-                            // already constructed
-                            // the answer.
-                        }
-
-                    }
-                    catch (error) {
-
-                        console.error(
-                            "❌ JSON PARSE ERROR:",
-                            jsonString,
-                            error
-                        );
-                    }
-                }
-            }
-        }
-
-
-        // --------------------------------------------------
-        // Finish
-        // --------------------------------------------------
-
-        removeProgress(progressContainer);
-        scrollToBottom();
-
-    }
-    catch (error) {
-
+        await streamResponse(
+            response,
+            assistant
+        );
+
+    } catch (error) {
         console.error(
-            "❌ STREAM ERROR:",
+            "Chat stream error:",
             error
         );
 
-
-        removeProgress(
-            progressContainer
-        );
-
-
-        answerContent.textContent =
+        assistant.answer.textContent =
             "Sorry, something went wrong.";
-    }
-    finally {
 
+    } finally {
         sendButton.disabled = false;
-
         messageInput.focus();
     }
 }
 
-
 // ==================================================
-// SEND BUTTON
+// EVENTS
 // ==================================================
 
 sendButton.addEventListener(
@@ -507,22 +480,14 @@ sendButton.addEventListener(
     sendMessage
 );
 
-
-// ==================================================
-// ENTER KEY
-// ==================================================
-
 messageInput.addEventListener(
     "keydown",
     (event) => {
-
         if (
             event.key === "Enter" &&
             !event.shiftKey
         ) {
-
             event.preventDefault();
-
             sendMessage();
         }
     }
