@@ -3,8 +3,6 @@ import asyncio
 from uuid import uuid4
 import json
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-#from langgraph.checkpoint.postgres import PostgresSaver
-
 from agents.supervisor_agent import (
     ask_supervisor_agent,
     create_supervisor_agent,
@@ -13,7 +11,6 @@ from agents.supervisor_agent import (
 from api.schema.chat import ChatRequest, ChatResponse
 from config import POSTGRES_URI
 from db.database import async_save_message
-
 
 async def create_chat_response(request: ChatRequest) -> ChatResponse:
     thread_id = str(uuid4())
@@ -47,7 +44,6 @@ async def create_chat_response(request: ChatRequest) -> ChatResponse:
         )
 
     return ChatResponse(answer=answer)
-
 
 async def create_chat_stream(request: ChatRequest):
 
@@ -86,13 +82,7 @@ async def create_chat_stream(request: ChatRequest):
             thread_id,
         ):
 
-            if event["type"] == "progress":
-
-                print(
-                    f"[PROGRESS] {event['data']}"
-                )
-
-            elif event["type"] == "token":
+            if event["type"] == "token":
 
                 token = event["data"]
 
@@ -109,8 +99,6 @@ async def create_chat_stream(request: ChatRequest):
             )
 
         if final_answer:
-
-            # CHANGE 2: add await
             await async_save_message(
                 thread_id=thread_id,
                 role="assistant",
