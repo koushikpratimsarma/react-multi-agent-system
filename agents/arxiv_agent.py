@@ -63,13 +63,16 @@ async def ask_arxiv_agent(
     })
 
     # ARXIV AGENT STREAM    
+    supervisor_thread_id = runtime.config["configurable"]["thread_id"]
+    arxiv_thread_id = f"{supervisor_thread_id}_arxiv"
+
     async for chunk in arxiv_agent.astream(
         {
-            "messages": messages
+            "messages": [{"role": "user", "content": query}]
         },
         config={
             "configurable": {
-                "thread_id": "arxiv_thread"
+                "thread_id": arxiv_thread_id
             }
         },
         stream_mode=["custom", "updates"],
@@ -121,7 +124,7 @@ async def ask_arxiv_agent(
 
     # Save tool call asynchronously
     await async_save_tool_call(
-        thread_id="arxiv_thread",
+        thread_id=arxiv_thread_id,
         agent_name="arxiv_agent",
         tool_name="ask_arxiv_agent",
         tool_input=str(messages),

@@ -62,13 +62,16 @@ async def ask_research_agent(messages, runtime: ToolRuntime):
     })
 
     # RESEARCH AGENT STREAM
+    supervisor_thread_id = runtime.config["configurable"]["thread_id"]
+    research_thread_id = f"{supervisor_thread_id}_research"
+
     async for chunk in research_agent.astream(
         {
-            "messages": messages
+            "messages": [{"role": "user", "content": query}]
         },
         config={
             "configurable":{
-                "thread_id":"research_thread"
+                "thread_id": research_thread_id
             }
         },
         stream_mode=["custom", "updates"],
@@ -121,7 +124,7 @@ async def ask_research_agent(messages, runtime: ToolRuntime):
 
     # SAVE RESEARCH RESULT
     await async_save_message(
-    thread_id="research_thread",
+    thread_id=research_thread_id,
     role="agent",
     content=final_answer,
     agent_name="research_agent",

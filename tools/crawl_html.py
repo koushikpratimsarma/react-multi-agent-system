@@ -206,6 +206,56 @@ Extracted content:
 
         return tool_output
 
+    except httpx.HTTPStatusError as error:
+
+        status_code = error.response.status_code
+
+        if status_code == 429:
+
+            error_message = (
+                "The website is rate-limiting requests "
+                "(429 Too Many Requests). Try again later "
+                "or use a different source."
+            )
+
+        elif status_code == 403:
+
+            error_message = (
+                "The website blocked access "
+                "(403 Forbidden). Try a different source."
+            )
+
+        elif status_code == 404:
+
+            error_message = (
+                "The page was not found "
+                "(404 Not Found). Try a different URL."
+            )
+
+        else:
+
+            error_message = (
+                f"HTML crawling failed with HTTP "
+                f"status {status_code}: {error}"
+            )
+
+        writer({
+            "event_type": "tool_error",
+            "agent": "research_agent",
+            "tool": "crawl_html_page",
+            "message": error_message,
+        })
+
+        await async_save_tool_call(
+            thread_id=thread_id,
+            agent_name="research_agent",
+            tool_name="crawl_html_page",
+            tool_input=url,
+            tool_output=error_message,
+        )
+
+        return error_message
+
     except httpx.RequestError as error:
 
         error_message = (

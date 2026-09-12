@@ -57,12 +57,15 @@ async def ask_news_agent(messages, runtime: ToolRuntime):
         "query": query,
     })
 
+    supervisor_thread_id = runtime.config["configurable"]["thread_id"]
+    thread_id = f"{supervisor_thread_id}_news"
+
     async for chunk in news_agent.astream(
-        {"messages": messages},
+        {"messages": [{"role": "user", "content": query}]},
 
          config={
             "configurable":{
-                "thread_id":"news_thread"
+                "thread_id": thread_id
             }
         },
 
@@ -95,7 +98,7 @@ async def ask_news_agent(messages, runtime: ToolRuntime):
                             final_answer = content
 
     await async_save_tool_call(
-        thread_id="news_thread",
+        thread_id=thread_id,
         agent_name="news_agent",
         tool_name="news_search",
         tool_input=str(messages),

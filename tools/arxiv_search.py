@@ -169,6 +169,48 @@ URL: {paper_url}
         )
         return final_answer
     
+    except httpx.HTTPStatusError as error:
+
+        status_code = error.response.status_code
+
+        if status_code == 429:
+
+            error_message = (
+                "arXiv API is rate-limiting requests "
+                "(429 Too Many Requests). Try again later."
+            )
+
+        elif status_code == 403:
+
+            error_message = (
+                "arXiv API blocked access "
+                "(403 Forbidden). Try again later."
+            )
+
+        else:
+
+            error_message = (
+                f"arXiv search failed with HTTP "
+                f"status {status_code}: {error}"
+            )
+
+        writer({
+            "event_type": "tool_error",
+            "agent": "arxiv_agent",
+            "tool": "arxiv_search",
+            "message": error_message,
+        })
+
+        await async_save_tool_call(
+            thread_id=thread_id,
+            agent_name="arxiv_agent",
+            tool_name="arxiv_search",
+            tool_input=query,
+            tool_output=error_message,
+        )
+
+        return error_message
+
     except httpx.RequestError as error:
 
         error_message = (

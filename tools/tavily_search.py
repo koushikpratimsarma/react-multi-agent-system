@@ -196,6 +196,48 @@ async def tavily_web_search(
 
         return clean_results
 
+    except httpx.HTTPStatusError as error:
+
+        status_code = error.response.status_code
+
+        if status_code == 429:
+
+            error_message = (
+                "Tavily API is rate-limiting requests "
+                "(429 Too Many Requests). Try again later."
+            )
+
+        elif status_code == 401 or status_code == 403:
+
+            error_message = (
+                "Tavily API authentication failed "
+                f"({status_code}). Check the API key."
+            )
+
+        else:
+
+            error_message = (
+                f"Tavily search failed with HTTP "
+                f"status {status_code}: {error}"
+            )
+
+        writer({
+            "event_type": "tool_error",
+            "agent": "web_agent",
+            "tool": "tavily_web_search",
+            "message": error_message,
+        })
+
+        await async_save_tool_call(
+            thread_id=thread_id,
+            agent_name="web_agent",
+            tool_name="tavily_web_search",
+            tool_input=query,
+            tool_output=error_message,
+        )
+
+        return error_message
+
     except httpx.RequestError as error:
 
         error_message = (

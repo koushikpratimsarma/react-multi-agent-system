@@ -56,11 +56,12 @@ async def ask_web_agent(messages, runtime: ToolRuntime):
         "query": query,
     })
 
-    thread_id = "web_thread"
+    supervisor_thread_id = runtime.config["configurable"]["thread_id"]
+    thread_id = f"{supervisor_thread_id}_web"
 
     async for chunk in web_agent.astream(
         {
-            "messages": messages
+            "messages": [{"role": "user", "content": query}]
         },
         config={
             "configurable": {
