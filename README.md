@@ -24,6 +24,18 @@ uv run uvicorn api.main:app --reload
 ```
 Open your browser and chat with the agents through the web interface.
 
+### Docker (with nginx reverse proxy)
+```bash
+docker compose up -d --build
+```
+The whole app (web UI, REST API, and SSE streaming) is served through the nginx reverse proxy:
+
+```text
+http://localhost:8080
+```
+
+`8080` is the default `NGINX_PORT` from `.env`; nginx forwards all requests to the FastAPI app over the internal Docker network, so the app itself is not published on the host.
+
 ## Requirements
 
 - Python 3.10+
