@@ -9,7 +9,7 @@ load_dotenv()
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 EXA_API_KEY = os.getenv("EXA_API_KEY")
-POSTGRES_URI = os.getenv("POSTGRES_URI")
+POSTGRES_URI = os.getenv("POSTGRES_URI") or os.getenv("DATABASE_URL")
 TODAY = datetime.now().strftime("%Y-%m-%d")
 
 if not TAVILY_API_KEY:

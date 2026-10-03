@@ -54,3 +54,20 @@ http://localhost:8080
    ```
 3. Install dependencies: `uv sync`
 4. Run the system
+
+## Deploying to Render
+
+1. Create a PostgreSQL database on Render and copy its **Internal** connection string.
+2. In the Render service settings, add the environment variables:
+   ```
+   TAVILY_API_KEY=your_key
+   OPENAI_API_KEY=your_key
+   EXA_API_KEY=your_key
+   POSTGRES_URI=postgresql://... (the Internal Database URL from Render)
+   ```
+3. Deploy the app. On startup the FastAPI app automatically creates the
+   `chat_messages` and `tool_calls` tables (see `init_db()` in `db/database.py`),
+   so no manual SQL is needed on Render.
+
+> Use the **Internal** `POSTGRES_URI` when the web service and the database are
+> in the same Render region, otherwise use the **External** URL.

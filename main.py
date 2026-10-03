@@ -1,6 +1,7 @@
 from langgraph.checkpoint.postgres import PostgresSaver
 
 from config import POSTGRES_URI
+from db.database import init_db
 from agents.supervisor_agent import (
     create_supervisor_agent,
     ask_supervisor_agent,
@@ -12,6 +13,9 @@ from agents.supervisor_agent import (
 # ---------------------------------------------------------
 
 def main():
+
+    # Create the chat_messages / tool_calls tables if they do not exist yet.
+    init_db()
 
     with PostgresSaver.from_conn_string(POSTGRES_URI) as checkpointer:
 
