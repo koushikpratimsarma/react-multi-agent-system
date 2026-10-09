@@ -1,4 +1,5 @@
 import psycopg
+from psycopg.rows import dict_row
 
 from config import POSTGRES_URI
 
@@ -33,6 +34,18 @@ def init_db():
                     tool_name TEXT NOT NULL,
                     tool_input TEXT,
                     tool_output TEXT,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+                )
+                """
+            )
+
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS users (
+                    id BIGSERIAL PRIMARY KEY,
+                    username TEXT NOT NULL UNIQUE,
+                    password_hash TEXT NOT NULL,
+                    is_admin BOOLEAN NOT NULL DEFAULT FALSE,
                     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
                 )
                 """
@@ -121,3 +134,67 @@ async def async_save_tool_call(
             )
 
         await conn.commit()
+
+
+# ---------------------------------------------------------
+# Users
+# ---------------------------------------------------------
+
+def get_user(username: str):
+    """Fetch a user by username (case-insensitive).
+
+    Returns a dict with keys ``username``, ``password_hash`` and ``is_admin``,
+    or None when no matching user exists.
+    """
+    with psycopg.connect(POSTGRES_URI, row_factory=dict_row) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT username, password_hash, is_admin
+                FROM users
+                WHERE lower(username) = lower(%s)
+                """,
+                (username,),
+            )
+            return cur.fetchone()
+
+
+def create_user(username: str, password_hash: str, is_admin: bool = False):
+    """Insert a new user. Existing usernames are left untouched."""
+    with psycopg.connect(POSTGRES_URI) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO users (username, password_hash, is_admin)
+                VALUES (%s, %s, %s)
+                ON CONFLICT (username) DO NOTHING
+                """,
+                (username, password_hash, is_admin),
+            )
+        conn.commit()
+
+
+def seed_user(username: str, password_hash: str, is_admin: bool = False):
+    """Create or update a single user's password (idempotent upsert)."""
+    with psycopg.connect(POSTGRES_URI) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO users (username, password_hash, is_admin)
+                VALUES (%s, %s, %s)
+                ON CONFLICT (username) DO UPDATE
+                SET password_hash = EXCLUDED.password_hash
+                """,
+                (username, password_hash, is_admin),
+            )
+        conn.commit()
+
+
+def seed_test_users(test_users):
+    """Seed the predefined demo users from config.TEST_USERS (idempotent).
+
+    ``test_users`` is a list of dicts with ``username`` and ``password_hash``.
+    Passwords are synced on every startup so the demo credentials always work.
+    """
+    for user in test_users:
+        seed_user(user["username"], user["password_hash"])
