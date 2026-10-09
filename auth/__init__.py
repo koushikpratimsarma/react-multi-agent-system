@@ -1,0 +1,1 @@
+"""Authentication package: users, password hashing and session helpers."""
