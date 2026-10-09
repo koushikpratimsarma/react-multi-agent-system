@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Sign in · AI Agent</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="flex min-h-screen items-center justify-center bg-gray-950 px-4 text-gray-100">
+
+    <div class="w-full max-w-sm">
+
+        <div class="rounded-2xl border border-gray-800 bg-gray-900 p-8 shadow-2xl">
+
+            <!-- Branding -->
+            <div class="mb-8 flex flex-col items-center text-center">
+                <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-700 text-3xl">
+                    🤖
+                </div>
+
+                <h1 class="mt-4 text-xl font-semibold">
+                    AI Agent
+                </h1>
+
+                <p class="mt-1 text-sm text-gray-500">
+                    Multi-Agent System · Sign in to continue
+                </p>
+            </div>
+
+            <!-- Error message -->
+            <div
+                id="loginError"
+                class="mb-4 hidden rounded-lg border border-red-900/60 bg-red-950/50 px-4 py-3 text-sm text-red-400"
+            ></div>
+
+            <!-- Login form -->
+            <form id="loginForm" class="space-y-5" novalidate>
+
+                <div>
+                    <label for="username" class="mb-1.5 block text-sm font-medium text-gray-300">
+                        Username
+                    </label>
+
+                    <input
+                        id="username"
+                        name="username"
+                        type="text"
+                        autocomplete="username"
+                        required
+                        autofocus
+                        value="{{ username }}"
+                        placeholder="Enter your username"
+                        class="w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2.5 text-gray-100 outline-none placeholder:text-gray-600 focus:border-gray-500"
+                    />
+                </div>
+
+                <div>
+                    <label for="password" class="mb-1.5 block text-sm font-medium text-gray-300">
+                        Password
+                    </label>
+
+                    <input
+                        id="password"
+                        name="password"
+                        type="password"
+                        autocomplete="current-password"
+                        required
+                        placeholder="Enter your password"
+                        class="w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2.5 text-gray-100 outline-none placeholder:text-gray-600 focus:border-gray-500"
+                    />
+                </div>
+
+                <button
+                    type="submit"
+                    class="w-full rounded-xl bg-white px-4 py-2.5 font-medium text-black transition hover:bg-gray-200"
+                >
+                    Sign in
+                </button>
+
+            </form>
+
+            <p class="mt-6 text-center text-xs text-gray-600">
+                Contact your administrator if you need an account.
+            </p>
+
+        </div>
+
+    </div>
+
+    <script>
+        // Already signed in? Go straight to the chat.
+        if (localStorage.getItem("token")) {
+            window.location.replace("/");
+        }
+
+        const form = document.getElementById("loginForm");
+        const errorBox = document.getElementById("loginError");
+
+        function showError(message) {
+            errorBox.textContent = message;
+            errorBox.classList.remove("hidden");
+        }
+
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+
+            errorBox.classList.add("hidden");
+
+            const username = document.getElementById("username").value.trim();
+            const password = document.getElementById("password").value;
+
+            if (!username || !password) {
+                showError("Please enter your username and password.");
+                return;
+            }
+
+            const response = await fetch("/api/auth/login", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded",
+                },
+                body: new URLSearchParams({ username, password }),
+            });
+
+            if (!response.ok) {
+                showError("Invalid username or password.");
+                return;
+            }
+
+            const data = await response.json();
+
+            localStorage.setItem("token", data.access_token);
+
+            window.location.replace("/");
+        });
+    </script>
+</body>
+
+</html>
