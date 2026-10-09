@@ -6,6 +6,17 @@ const messagesContainer =
     document.querySelector(".mx-auto.max-w-3xl");
 
 // ==================================================
+// JWT SESSION
+// ==================================================
+
+const token = localStorage.getItem("token");
+
+// No token -> back to the login page.
+if (!token) {
+    window.location.replace("/login");
+}
+
+// ==================================================
 // BASIC HELPERS
 // ==================================================
 
@@ -436,7 +447,9 @@ async function sendMessage() {
 
                 headers: {
                     "Content-Type":
-                        "application/json"
+                        "application/json",
+                    "Authorization":
+                        `Bearer ${token}`
                 },
 
                 body: JSON.stringify({
@@ -446,6 +459,14 @@ async function sendMessage() {
         );
 
         if (!response.ok) {
+            // The token is missing, invalid, or expired - clear it and
+            // send the user back to the login page.
+            if (response.status === 401) {
+                localStorage.removeItem("token");
+                window.location.replace("/login");
+                return;
+            }
+
             throw new Error(
                 `Request failed: ${response.status}`
             );
@@ -492,3 +513,61 @@ messageInput.addEventListener(
         }
     }
 );
+// ==================================================
+// SESSION INIT: username + logout
+// ==================================================
+
+async function initSession() {
+    try {
+        const response = await fetch(
+            "/api/auth/me",
+            {
+                headers: {
+                    "Authorization":
+                        `Bearer ${token}`
+                }
+            }
+        );
+
+        if (!response.ok) {
+            localStorage.removeItem("token");
+            window.location.replace("/login");
+            return;
+        }
+
+        const user = await response.json();
+
+        const nameEl = document.getElementById(
+            "currentUser"
+        );
+
+        if (nameEl) {
+            nameEl.textContent = user.username;
+        }
+
+    } catch (error) {
+        console.error(
+            "Session check failed:",
+            error
+        );
+        localStorage.removeItem("token");
+        window.location.replace("/login");
+    }
+}
+
+const logoutBtn = document.getElementById(
+    "logoutBtn"
+);
+
+if (logoutBtn) {
+    logoutBtn.addEventListener(
+        "click",
+        (event) => {
+            event.preventDefault();
+            localStorage.removeItem("token");
+            window.location.replace("/login");
+        }
+    );
+}
+
+initSession();
