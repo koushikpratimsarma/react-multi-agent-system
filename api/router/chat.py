@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Depends
 
-from api.schema.chat import ChatRequest, ChatResponse
+from api.schemas.chat import ChatRequest, ChatResponse
 from fastapi.responses import StreamingResponse
 from auth.dependencies import get_current_user
 from auth.schemas import UserOut
