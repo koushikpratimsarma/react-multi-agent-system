@@ -33,16 +33,6 @@ JWT_ALGORITHM = os.getenv("JWT_ALGORITHM") or "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))
 
 
-TEST_USERS = [
-    {"username": "user1", "password": "test1234"},
-    {"username": "user2", "password": "test1234"},
-    {"username": "user3", "password": "test1234"},
-    {"username": "user4", "password": "test1234"},
-    {"username": "user5", "password": "test1234"},
-]
-
-
-
 model = ChatOpenAI(
     model="gpt-4.1-mini",
     temperature=0,

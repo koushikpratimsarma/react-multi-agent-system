@@ -159,8 +159,16 @@ def get_user(username: str):
             return cur.fetchone()
 
 
-def create_user(username: str, password_hash: str, is_admin: bool = False):
-    """Insert a new user. Existing usernames are left untouched."""
+def create_user(
+    username: str,
+    password_hash: str,
+    is_admin: bool = False,
+) -> bool:
+    """Insert a new user.
+
+    Returns ``True`` when the account was created and ``False`` when the
+    username already exists (existing rows are never overwritten).
+    """
     with psycopg.connect(POSTGRES_URI) as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -171,30 +179,6 @@ def create_user(username: str, password_hash: str, is_admin: bool = False):
                 """,
                 (username, password_hash, is_admin),
             )
+            created = cur.rowcount == 1
         conn.commit()
-
-
-def seed_user(username: str, password_hash: str, is_admin: bool = False):
-    """Create or update a single user's password (idempotent upsert)."""
-    with psycopg.connect(POSTGRES_URI) as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                INSERT INTO users (username, password_hash, is_admin)
-                VALUES (%s, %s, %s)
-                ON CONFLICT (username) DO UPDATE
-                SET password_hash = EXCLUDED.password_hash
-                """,
-                (username, password_hash, is_admin),
-            )
-        conn.commit()
-
-
-def seed_test_users(test_users):
-    """Seed the predefined demo users from config.TEST_USERS (idempotent).
-
-    ``test_users`` is a list of dicts with ``username`` and ``password_hash``.
-    Passwords are synced on every startup so the demo credentials always work.
-    """
-    for user in test_users:
-        seed_user(user["username"], user["password_hash"])
+        return created

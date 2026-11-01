@@ -8,9 +8,7 @@ from fastapi.staticfiles import StaticFiles
 
 from auth.router import api_router as auth_api_router
 from auth.router import page_router as auth_page_router
-from auth.security import hash_password
-from config import TEST_USERS
-from db.database import init_db, seed_test_users
+from db.database import init_db
 from api.router.chat import router as chat_router
 from api.router.root import router as root_router
 
@@ -25,18 +23,6 @@ async def lifespan(app: FastAPI):
     # (main.py) also uses it. Running it in a worker thread here keeps the
     # event loop free during startup.
     await asyncio.to_thread(init_db)
-
-    # Seed the predefined demo users in TEST_USERS.
-    await asyncio.to_thread(
-        seed_test_users,
-        [
-            {
-                "username": user["username"],
-                "password_hash": hash_password(user["password"]),
-            }
-            for user in TEST_USERS
-        ],
-    )
     yield
 
 
