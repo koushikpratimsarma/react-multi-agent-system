@@ -7,7 +7,7 @@ from agents.web_agent import ask_web_agent
 from agents.news_agent import ask_news_agent
 from agents.research_agent import ask_research_agent
 
-def create_supervisor_agent(checkpointer):
+def create_supervisor_agent(checkpointer, user_name=None):
 
     return create_agent(
         model=model,

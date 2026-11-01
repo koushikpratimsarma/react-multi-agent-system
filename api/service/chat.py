@@ -8,17 +8,20 @@ from agents.supervisor_agent import (
     create_supervisor_agent,
     stream_supervisor_agent,
 )
-from api.schema.chat import ChatRequest, ChatResponse
+from api.schemas.chat import ChatRequest, ChatResponse
 from config import POSTGRES_URI
 from db.database import async_save_message
 
-async def create_chat_response(request: ChatRequest) -> ChatResponse:
+async def create_chat_response(
+    request: ChatRequest,
+    user_name: str,
+) -> ChatResponse:
     thread_id = str(uuid4())
     messages = [{"role": "user", "content": request.message}]
 
     async with AsyncPostgresSaver.from_conn_string(POSTGRES_URI) as checkpointer:
         await checkpointer.setup()
-        supervisor_agent = create_supervisor_agent(checkpointer)
+        supervisor_agent = create_supervisor_agent(checkpointer, user_name=user_name)
 
         await async_save_message(
             thread_id=thread_id,
@@ -45,7 +48,10 @@ async def create_chat_response(request: ChatRequest) -> ChatResponse:
 
     return ChatResponse(answer=answer)
 
-async def create_chat_stream(request: ChatRequest):
+async def create_chat_stream(
+    request: ChatRequest,
+    user_name: str,
+):
 
     thread_id = str(uuid4())
 
@@ -63,7 +69,8 @@ async def create_chat_stream(request: ChatRequest):
         await checkpointer.setup()
 
         supervisor_agent = create_supervisor_agent(
-            checkpointer
+            checkpointer,
+            user_name=user_name,
         )
 
         # CHANGE 1: add await
