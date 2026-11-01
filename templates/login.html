@@ -22,23 +22,23 @@
                     🤖
                 </div>
 
-                <h1 class="mt-4 text-xl font-semibold">
-                    AI Agent
+                <h1 id="pageTitle" class="mt-4 text-xl font-semibold">
+                    Sign in
                 </h1>
 
                 <p class="mt-1 text-sm text-gray-500">
-                    Multi-Agent System · Sign in to continue
+                    Multi-Agent System
                 </p>
             </div>
 
             <!-- Error message -->
             <div
-                id="loginError"
+                id="formError"
                 class="mb-4 hidden rounded-lg border border-red-900/60 bg-red-950/50 px-4 py-3 text-sm text-red-400"
             ></div>
 
-            <!-- Login form -->
-            <form id="loginForm" class="space-y-5" novalidate>
+            <!-- Auth form (used for both sign in and sign up) -->
+            <form id="authForm" class="space-y-5" novalidate>
 
                 <div>
                     <label for="username" class="mb-1.5 block text-sm font-medium text-gray-300">
@@ -50,9 +50,10 @@
                         name="username"
                         type="text"
                         autocomplete="username"
+                        minlength="3"
+                        maxlength="32"
                         required
                         autofocus
-                        value="{{ username }}"
                         placeholder="Enter your username"
                         class="w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2.5 text-gray-100 outline-none placeholder:text-gray-600 focus:border-gray-500"
                     />
@@ -68,6 +69,7 @@
                         name="password"
                         type="password"
                         autocomplete="current-password"
+                        minlength="8"
                         required
                         placeholder="Enter your password"
                         class="w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2.5 text-gray-100 outline-none placeholder:text-gray-600 focus:border-gray-500"
@@ -75,6 +77,7 @@
                 </div>
 
                 <button
+                    id="submitButton"
                     type="submit"
                     class="w-full rounded-xl bg-white px-4 py-2.5 font-medium text-black transition hover:bg-gray-200"
                 >
@@ -83,8 +86,15 @@
 
             </form>
 
-            <p class="mt-6 text-center text-xs text-gray-600">
-                Contact your administrator if you need an account.
+            <p class="mt-6 text-center text-sm text-gray-500">
+                <span id="toggleHint">Need an account?</span>
+                <button
+                    id="toggleMode"
+                    type="button"
+                    class="ml-1 font-medium text-gray-300 underline-offset-4 hover:text-white hover:underline"
+                >
+                    Create one
+                </button>
             </p>
 
         </div>
@@ -97,13 +107,43 @@
             window.location.replace("/");
         }
 
-        const form = document.getElementById("loginForm");
-        const errorBox = document.getElementById("loginError");
+        const form = document.getElementById("authForm");
+        const errorBox = document.getElementById("formError");
+        const pageTitle = document.getElementById("pageTitle");
+        const submitButton = document.getElementById("submitButton");
+        const toggleMode = document.getElementById("toggleMode");
+        const toggleHint = document.getElementById("toggleHint");
+
+        // Mode: "signin" or "register"
+        let mode = "signin";
 
         function showError(message) {
             errorBox.textContent = message;
             errorBox.classList.remove("hidden");
         }
+
+        function switchMode(next) {
+            mode = next;
+            errorBox.classList.add("hidden");
+
+            if (mode === "signin") {
+                pageTitle.textContent = "Sign in";
+                submitButton.textContent = "Sign in";
+                toggleHint.textContent = "Need an account?";
+                toggleMode.textContent = "Create one";
+                document.getElementById("password").setAttribute("autocomplete", "current-password");
+            } else {
+                pageTitle.textContent = "Create account";
+                submitButton.textContent = "Create account";
+                toggleHint.textContent = "Already have an account?";
+                toggleMode.textContent = "Sign in";
+                document.getElementById("password").setAttribute("autocomplete", "new-password");
+            }
+        }
+
+        toggleMode.addEventListener("click", () => {
+            switchMode(mode === "signin" ? "register" : "signin");
+        });
 
         form.addEventListener("submit", async (event) => {
             event.preventDefault();
@@ -118,16 +158,37 @@
                 return;
             }
 
-            const response = await fetch("/api/auth/login", {
+            const endpoint = mode === "signin" ? "/api/auth/login" : "/api/auth/register";
+
+            const response = await fetch(endpoint, {
                 method: "POST",
                 headers: {
-                    "Content-Type": "application/x-www-form-urlencoded",
+                    "Content-Type": mode === "signin"
+                        ? "application/x-www-form-urlencoded"
+                        : "application/json",
                 },
-                body: new URLSearchParams({ username, password }),
+                body: mode === "signin"
+                    ? new URLSearchParams({ username, password })
+                    : JSON.stringify({ username, password }),
             });
 
             if (!response.ok) {
-                showError("Invalid username or password.");
+                if (response.status === 401) {
+                    showError("Invalid username or password.");
+                } else if (response.status === 409) {
+                    showError("That username is already taken.");
+                } else {
+                    const data = await response.json().catch(() => null);
+                    const detail = data?.detail;
+
+                    if (typeof detail === "string") {
+                        showError(detail);
+                    } else if (Array.isArray(detail) && detail.length > 0) {
+                        showError(detail[0].msg || "Please check your input.");
+                    } else {
+                        showError("Something went wrong. Please try again.");
+                    }
+                }
                 return;
             }
 

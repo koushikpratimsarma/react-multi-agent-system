@@ -12,9 +12,13 @@ from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.templating import Jinja2Templates
 
 from auth.dependencies import get_current_user
-from auth.schemas import Token, UserOut
-from auth.security import create_access_token, verify_password
-from db.database import get_user
+from auth.schemas import RegisterRequest, Token, UserOut
+from auth.security import (
+    create_access_token,
+    hash_password,
+    verify_password,
+)
+from db.database import create_user, get_user
 
 
 templates = Jinja2Templates(directory="templates")
@@ -71,6 +75,36 @@ async def login(
             username=user["username"],
             is_admin=user["is_admin"],
         ),
+    )
+
+
+@api_router.post(
+    "/register",
+    response_model=Token,
+    status_code=status.HTTP_201_CREATED,
+)
+async def register(
+    payload: RegisterRequest,
+) -> Token:
+    """Create a new account and return a JWT so the user is signed in immediately.
+
+    Returns ``409 Conflict`` when the username is already taken.
+    """
+    username = payload.username.strip()
+
+    created = create_user(username, hash_password(payload.password))
+
+    if not created:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Username is already taken",
+        )
+
+    access_token = create_access_token(subject=username)
+
+    return Token(
+        access_token=access_token,
+        user=UserOut(username=username, is_admin=False),
     )
 
 
