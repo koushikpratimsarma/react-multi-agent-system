@@ -6,6 +6,7 @@ from middleware.agent_limit import AgentCallLimitMiddleware
 from agents.web_agent import ask_web_agent
 from agents.news_agent import ask_news_agent
 from agents.research_agent import ask_research_agent
+from agents.deep_research.agent import ask_deep_research_agent
 
 def create_supervisor_agent(checkpointer, user_name=None):
 
@@ -15,12 +16,13 @@ def create_supervisor_agent(checkpointer, user_name=None):
             ask_web_agent,
             ask_research_agent,
             ask_news_agent,
+            ask_deep_research_agent,
         ],
         system_prompt=SUPERVISOR_PROMPT,
         name="supervisor_agent",
         checkpointer=checkpointer,
         middleware=[
-            AgentCallLimitMiddleware(max_agent_calls=5)
+            AgentCallLimitMiddleware(max_agent_calls=8)
         ],
     )
 
