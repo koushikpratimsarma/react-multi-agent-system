@@ -7,6 +7,7 @@ requires-python = ">=3.13"
 dependencies = [
     "arxiv>=4.0.1",
     "beautifulsoup4>=4.15.0",
+    "deepagents>=0.7.32",
     "fastapi>=0.141.1",
     "httpx>=0.28.1",
     "itsdangerous>=2.2.0",
