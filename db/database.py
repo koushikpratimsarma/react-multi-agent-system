@@ -106,6 +106,34 @@ async def async_save_message(
 
         await conn.commit()
 
+async def get_messages(
+    thread_id: str,
+) -> list[dict]:
+    """Load all messages for a thread, ordered by creation time."""
+    async with await psycopg.AsyncConnection.connect(
+        POSTGRES_URI
+    ) as conn:
+        async with conn.cursor(row_factory=dict_row) as cur:
+            await cur.execute(
+                """
+                SELECT role, agent_name, content
+                FROM chat_messages
+                WHERE thread_id = %s
+                ORDER BY created_at ASC
+                """,
+                (thread_id,),
+            )
+            rows = await cur.fetchall()
+            return [
+                {
+                    "role": row["role"],
+                    "content": row["content"],
+                    "agent_name": row["agent_name"],
+                }
+                for row in rows
+            ]
+
+
 async def async_save_tool_call(
     thread_id: str,
     agent_name: str,
