@@ -16,6 +16,11 @@ if (!token) {
     window.location.replace("/login");
 }
 
+// Track the current conversation thread so subsequent messages
+// continue the same chat instead of starting a new one.
+// Persisted in localStorage so the agent remembers across page reloads.
+let currentThreadId = localStorage.getItem("thread_id") || null;
+
 // ==================================================
 // BASIC HELPERS
 // ==================================================
@@ -31,131 +36,6 @@ function addText(parent, text, className = "") {
     element.textContent = text;
     parent.appendChild(element);
     return element;
-}
-
-// ==================================================
-// MARKDOWN RENDERING
-// ==================================================
-
-let markedReady = false;
-
-function ensureMarked() {
-    if (!markedReady && typeof marked !== "undefined") {
-        marked.use({
-            gfm: true,
-            breaks: true,
-            headerIds: false,
-            mangle: false,
-        });
-        markedReady = true;
-    }
-}
-
-function renderMarkdown(text) {
-    ensureMarked();
-    if (typeof marked === "undefined") {
-        return renderFallbackMarkdown(normalizeMarkdownTables(text || ""));
-    }
-    return marked.parse(normalizeMarkdownTables(text || ""));
-}
-
-function escapeHtml(value) {
-    const element = document.createElement("div");
-    element.textContent = value;
-    return element.innerHTML;
-}
-
-function tableCells(line) {
-    return line.trim().replace(/^\||\|$/g, "").split("|").map((cell) =>
-        escapeHtml(cell.trim())
-    );
-}
-
-// Keep the chat usable when a CDN is blocked by a browser, proxy, or CSP.
-// This deliberately implements the small Markdown subset needed for chat
-// responses and, unlike the previous raw-HTML fallback, never injects model
-// output directly into the page.
-function renderFallbackMarkdown(text) {
-    const lines = text.split("\n");
-    const output = [];
-
-    for (let index = 0; index < lines.length; index += 1) {
-        const header = lines[index];
-        const expectedCells = isTableRow(header) ? tableCellCount(header) : 0;
-
-        if (expectedCells && isTableSeparator(lines[index + 1] || "", expectedCells)) {
-            const headers = tableCells(header);
-            const rows = [];
-            index += 2;
-
-            while (index < lines.length && isTableRow(lines[index])) {
-                const cells = tableCells(lines[index]);
-                while (cells.length < expectedCells) {
-                    cells.push("");
-                }
-                rows.push(`<tr>${cells.slice(0, expectedCells).map((cell) => `<td>${cell}</td>`).join("")}</tr>`);
-                index += 1;
-            }
-
-            output.push(
-                `<table><thead><tr>${headers.map((cell) => `<th>${cell}</th>`).join("")}</tr></thead>` +
-                `<tbody>${rows.join("")}</tbody></table>`
-            );
-            index -= 1;
-            continue;
-        }
-
-        if (header.trim()) {
-            output.push(`<p>${escapeHtml(header)}</p>`);
-        }
-    }
-
-    return output.join("\n");
-}
-
-function isTableRow(line) {
-    const trimmed = line.trim();
-    return trimmed.includes("|") && !trimmed.startsWith("```") &&
-        /^\|?.+\|.+\|?$/.test(trimmed);
-}
-
-function tableCellCount(line) {
-    return line.trim().replace(/^\||\|$/g, "").split("|").length;
-}
-
-function isTableSeparator(line, expectedCells) {
-    const cells = line.trim().replace(/^\||\|$/g, "").split("|");
-    return cells.length === expectedCells && cells.every((cell) =>
-        /^\s*:?-{3,}:?\s*$/.test(cell)
-    );
-}
-
-// Models occasionally emit a pipe-delimited line while it is still
-// streaming, or omit one trailing empty cell.  Only pass a block to the
-// Markdown table parser when it has a valid header/separator pair; repair
-// harmless missing trailing cells so the final table remains rectangular.
-function normalizeMarkdownTables(text) {
-    const lines = text.replace(/\r\n?/g, "\n").split("\n");
-
-    for (let index = 0; index < lines.length - 1; index += 1) {
-        if (!isTableRow(lines[index])) {
-            continue;
-        }
-
-        const expectedCells = tableCellCount(lines[index]);
-        if (!isTableSeparator(lines[index + 1], expectedCells)) {
-            continue;
-        }
-
-        for (let row = index + 2; row < lines.length && isTableRow(lines[row]); row += 1) {
-            const actualCells = tableCellCount(lines[row]);
-            if (actualCells < expectedCells) {
-                lines[row] = `${lines[row].trim().replace(/\|?$/, "|")}${"|".repeat(expectedCells - actualCells)}`;
-            }
-        }
-    }
-
-    return lines.join("\n");
 }
 
 function updateAnswer(answerElement, html) {
@@ -543,15 +423,14 @@ async function streamResponse(response, assistant) {
                         );
                     }
 
+                    else if (data.type === "thread_id") {
+
+                        currentThreadId = data.data;
+                        localStorage.setItem("thread_id", currentThreadId);
+                    }
+
                     else if (data.type === "token") {
-                        assistant.answer._markdown =
-                            (assistant.answer._markdown || "") + data.data;
-
-                        const html = renderMarkdown(
-                            assistant.answer._markdown
-                        );
-                        updateAnswer(assistant.answer, html);
-
+                        assistant.answer.textContent += data.data;
                         scrollToBottom();
                     }
 
@@ -599,7 +478,8 @@ async function sendMessage() {
                 },
 
                 body: JSON.stringify({
-                    message
+                    message,
+                    ...(currentThreadId ? { thread_id: currentThreadId } : {}),
                 })
             }
         );
@@ -709,11 +589,13 @@ if (logoutBtn) {
     logoutBtn.addEventListener(
         "click",
         (event) => {
-            event.preventDefault();
-            localStorage.removeItem("token");
-            window.location.replace("/login");
+        event.preventDefault();
+        localStorage.removeItem("token");
+        localStorage.removeItem("thread_id");
+        window.location.replace("/login");
         }
     );
 }
 
 initSession();
+
