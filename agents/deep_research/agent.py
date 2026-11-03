@@ -32,13 +32,13 @@ deep_research_agent = create_deep_agent(
     system_prompt=DEEP_RESEARCH_AGENT_PROMPT,
     name="deep_research_agent",
     checkpointer=checkpointer,
-    skills=[
-        "agents/deep_research/skills/academic-research",
-        "agents/deep_research/skills/fact-checking",
-        "agents/deep_research/skills/web-research",
-    ],
     middleware=[
         ToolCallLimitMiddleware(max_tool_calls=12)
+    ],
+    skills=[
+        "agents/deep_research/skills/web-research",
+        "agents/deep_research/skills/academic-research",
+        "agents/deep_research/skills/fact-checking",
     ],
 )
 
