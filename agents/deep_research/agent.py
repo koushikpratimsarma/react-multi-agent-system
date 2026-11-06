@@ -7,8 +7,10 @@ sources, and synthesizing findings into comprehensive reports.
 """
 
 import json
+from typing import Any, cast
 from deepagents import create_deep_agent
 from langgraph.checkpoint.memory import InMemorySaver
+from langchain.agents.middleware import TodoListMiddleware
 from langchain.tools import ToolRuntime, tool
 from middleware.tool_limit import ToolCallLimitMiddleware
 from config import model
@@ -33,6 +35,9 @@ deep_research_agent = create_deep_agent(
     name="deep_research_agent",
     checkpointer=checkpointer,
     middleware=[
+        # Deep Agents supports this middleware, but its planning-state type
+        # is narrower than DeepAgentState in the public type signature.
+        cast(Any, TodoListMiddleware()),
         ToolCallLimitMiddleware(max_tool_calls=12)
     ],
     skills=[
